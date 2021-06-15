@@ -1,0 +1,128 @@
+syntax = "proto3";
+
+option go_package = "github.com/cirruslabs/terminal/internal/api";
+
+/*
+ * GuestService provides a way to start a new terminal session on a Host connected to the HostService.
+ */
+service GuestService {
+  rpc TerminalChannel(stream GuestTerminalRequest) returns (stream GuestTerminalResponse);
+}
+
+/*
+ * HostService lets the Hosts to register their presence and wait for a new terminal session requests from the GuestService.
+ */
+service HostService {
+  rpc ControlChannel(stream HostControlRequest) returns (stream HostControlResponse);
+  rpc DataChannel(stream HostDataRequest) returns (stream HostDataResponse);
+}
+
+message GuestTerminalRequest {
+  message Hello {
+    /* Unique Host identifier assigned by the HostService */
+    string locator = 1;
+
+    /*
+     * Symmetric key used to authenticate against a Host specified by the locator above,
+     * should match the Host's trusted_secret
+     */
+    string secret = 2;
+
+    /* Dimensions of the terminal to be created on the Host */
+    TerminalDimensions requested_dimensions = 3;
+  }
+
+  oneof operation {
+    /* Mandatory first message from a Guest after it opens this channel */
+    Hello hello = 1;
+
+    /* Used to synchronize terminal dimensions on the Host after e.g. web UI terminal size changes */
+    TerminalDimensions change_dimensions = 2;
+
+    /* Terminal input to the Host */
+    Data input = 3;
+  }
+}
+
+message GuestTerminalResponse {
+  oneof operation {
+    /* Terminal output from the Host */
+    Data output = 1;
+  }
+}
+
+message HostControlRequest {
+  message Hello {
+    /* Symmetric key, the knowledge of which by the Guest can be used to spawn a new terminal on to this Host */
+    string trusted_secret = 1;
+  }
+
+  oneof operation {
+    /* Mandatory first message from the Host after it opens this channel */
+    Hello hello = 1;
+  }
+}
+
+message HostControlResponse {
+  message Hello {
+    /* A unique identifier that the HostService assigns to this Host */
+    string locator = 1;
+  }
+
+  message DataChannelRequest {
+    /* Token that can be used to create a new data channel */
+    string token = 1;
+
+    /* Dimensions of the new terminal that will be created and attached to the data channel */
+    TerminalDimensions requested_dimensions = 3;
+  }
+
+  oneof operation {
+    /* Mandatory reply to the Hello message sent from the Host */
+    Hello hello = 1;
+
+    /* Emitted when a Guest opens a new terminal channel */
+    DataChannelRequest data_channel_request = 2;
+  }
+}
+
+message HostDataRequest {
+  message Hello {
+    /* Host's locator */
+    string locator = 1;
+
+    /* Token provided to the Host in DataChannelRequest */
+    string token = 2;
+  }
+
+  oneof operation {
+    /* Mandatory first message to be sent by the Host */
+    Hello hello = 1;
+
+    /* Terminal output to the Guest */
+    Data output = 2;
+  }
+}
+
+message HostDataResponse {
+  oneof operation {
+    /* Emitted when the Guest decides to change an already created terminal dimensions (e.g. when the web UI terminal size changes) */
+    TerminalDimensions change_dimensions = 1;
+
+    /* Terminal input from the Guest */
+    Data input = 2;
+  }
+}
+
+message TerminalDimensions {
+  uint32 width_columns = 1;
+  uint32 height_rows = 2;
+}
+
+message Data {
+  bytes data = 1;
+}
+
+message Error {
+  string message = 1;
+}
