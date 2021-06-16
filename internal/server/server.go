@@ -16,6 +16,8 @@ import (
 	"sync"
 )
 
+var ErrNewTerminalRefused = errors.New("refusing to register new terminal")
+
 type TerminalServer struct {
 	logger *logrus.Logger
 
@@ -151,7 +153,7 @@ func (ts *TerminalServer) registerTerminal(terminal *terminal.Terminal) error {
 	defer ts.terminalsLock.Unlock()
 
 	if _, ok := ts.terminals[terminal.Locator()]; ok {
-		return fmt.Errorf("attempted to register multiple terminals with the same locator")
+		return fmt.Errorf("%w: a terminal with the same locator already exists", ErrNewTerminalRefused)
 	}
 
 	ts.terminals[terminal.Locator()] = terminal

@@ -79,7 +79,7 @@ func TestSessionsAreCleanedUpAfterTerminalClosure(t *testing.T) {
 	for i := 0; i < sessionsToRegister; i++ {
 		newSession := session.New(context.Background(), nil)
 
-		terminal.RegisterSession(newSession)
+		require.NoError(t, terminal.RegisterSession(newSession))
 		require.Equal(t, newSession, terminal.FindSession(newSession.Token()))
 
 		registeredSessions = append(registeredSessions, newSession)
@@ -119,7 +119,7 @@ func TestSessionRegistrationUnregistration(t *testing.T) {
 	session := session.New(context.Background(), nil)
 
 	// Register session
-	terminal.RegisterSession(session)
+	require.NoError(t, terminal.RegisterSession(session))
 	require.Equal(t, session, terminal.FindSession(session.Token()))
 
 	// Unregister session

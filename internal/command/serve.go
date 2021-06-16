@@ -58,8 +58,10 @@ func newServeCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
 		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
 
-	cmd.PersistentFlags().StringVar(&guestServerAddress, "guest-server-address", "0.0.0.0:8080", "address for the guest server to listen on")
-	cmd.PersistentFlags().StringVar(&hostServerAddress, "host-server-address", "0.0.0.0:8081", "address for the host server to listen on")
+	cmd.PersistentFlags().StringVar(&guestServerAddress, "guest-server-address", "0.0.0.0:8080",
+		"address for the guest server to listen on")
+	cmd.PersistentFlags().StringVar(&hostServerAddress, "host-server-address", "0.0.0.0:8081",
+		"address for the host server to listen on")
 
 	cmd.PersistentFlags().StringSliceVar(&allowedOrigins, "allowed-origins", []string{},
 		"a list comma-separated origins that are allowed to talk with the guest's gRPC-Web WebSocket server")

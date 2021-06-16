@@ -2,10 +2,13 @@ package terminal
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"github.com/cirruslabs/terminal/internal/server/session"
 	"sync"
 )
+
+var ErrNewSessionRefused = errors.New("refusing to register new session")
 
 type Terminal struct {
 	locator string
@@ -39,11 +42,11 @@ func (terminal *Terminal) RegisterSession(session *session.Session) error {
 	defer terminal.sessionsLock.Unlock()
 
 	if terminal.noMoreSessions {
-		return fmt.Errorf("refusing to register new session because terminal is shutting down")
+		return fmt.Errorf("%w: terminal is shutting down", ErrNewSessionRefused)
 	}
 
 	if _, ok := terminal.sessions[session.Token()]; ok {
-		return fmt.Errorf("attempted to register multiple sessions with the same token")
+		return fmt.Errorf("%w: a session with the same token already exists", ErrNewSessionRefused)
 	}
 
 	terminal.sessions[session.Token()] = session

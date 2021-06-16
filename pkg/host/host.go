@@ -158,7 +158,8 @@ func (th *TerminalHost) launchDataChannel(
 	}
 
 	// Create a PTY with a shell attached to it
-	shellCmd := exec.Command(determineShellPath())
+	shellPath := determineShellPath()
+	shellCmd := exec.Command(shellPath)
 
 	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dataChannelRequest.RequestedDimensions))
 	if err != nil {
@@ -185,67 +186,73 @@ func (th *TerminalHost) launchDataChannel(
 	// Receive terminal input from the server and write it to the PTY
 	go func() {
 		defer cancel()
-
-		for {
-			th.updateLastActivity()
-
-			dataFromServer, err := dataChannel.Recv()
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					th.logger.Warnf("failed to receive Data message from data channel: %v", err)
-				}
-
-				return
-			}
-
-			input := dataFromServer.GetInput()
-			if input == nil {
-				th.logger.Warnf("should've received a Data message")
-				return
-			}
-
-			if _, err := shellPty.Write(input.Data); err != nil {
-				th.logger.Warnf("should've received a Data message")
-				return
-			}
-		}
+		th.ioToPty(dataChannel, shellPty)
 	}()
 
 	// Read output from the PTY and send it to the server
 	go func() {
 		defer cancel()
-
-		buf := make([]byte, 4096)
-
-		for {
-			th.updateLastActivity()
-
-			n, err := shellPty.Read(buf)
-			if err != nil {
-				if !errors.Is(err, io.EOF) {
-					th.logger.Warnf("failed to read data from the PTY: %v", err)
-				}
-
-				return
-			}
-
-			if err := dataChannel.Send(&api.HostDataRequest{
-				Operation: &api.HostDataRequest_Output{
-					Output: &api.Data{
-						Data: buf[:n],
-					},
-				},
-			}); err != nil {
-				if !errors.Is(err, io.EOF) {
-					th.logger.Warnf("failed to send data from PTY: %v", err)
-				}
-
-				return
-			}
-		}
+		th.ioFromPty(dataChannel, shellPty)
 	}()
 
 	<-subCtx.Done()
+}
+
+func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty io.Writer) {
+	for {
+		th.updateLastActivity()
+
+		dataFromServer, err := dataChannel.Recv()
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				th.logger.Warnf("failed to receive Data message from data channel: %v", err)
+			}
+
+			return
+		}
+
+		input := dataFromServer.GetInput()
+		if input == nil {
+			th.logger.Warnf("should've received a Data message")
+			return
+		}
+
+		if _, err := shellPty.Write(input.Data); err != nil {
+			th.logger.Warnf("should've received a Data message")
+			return
+		}
+	}
+}
+
+func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient, shellPty io.Reader) {
+	buf := make([]byte, 4096)
+
+	for {
+		th.updateLastActivity()
+
+		n, err := shellPty.Read(buf)
+		if err != nil {
+			if !errors.Is(err, io.EOF) {
+				th.logger.Warnf("failed to read data from the PTY: %v", err)
+			}
+
+			return
+		}
+
+		if err := dataChannel.Send(&api.HostDataRequest{
+			Operation: &api.HostDataRequest_Output{
+				Output: &api.Data{
+					Data: buf[:n],
+				},
+			},
+		}); err != nil {
+			if !errors.Is(err, io.EOF) {
+				th.logger.Warnf("failed to send data from PTY: %v", err)
+			}
+
+			return
+		}
+	}
 }
 
 func determineShellPath() string {

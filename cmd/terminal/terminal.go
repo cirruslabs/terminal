@@ -11,7 +11,6 @@ import (
 func main() {
 	// Set up a signal-interruptible context
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	interruptCh := make(chan os.Signal, 1)
 	signal.Notify(interruptCh, os.Interrupt)
@@ -25,6 +24,9 @@ func main() {
 	}()
 
 	if err := command.NewRootCmd().ExecuteContext(ctx); err != nil {
+		cancel()
 		log.Fatal(err)
 	}
+
+	cancel()
 }

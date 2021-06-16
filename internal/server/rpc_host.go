@@ -79,11 +79,13 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 
 	session := terminal.FindSession(helloFromHost.Token)
 	if session == nil {
-		return status.Errorf(codes.NotFound, "terminal %q has no active session with the specified token", helloFromHost.Token)
+		return status.Errorf(codes.NotFound, "terminal %q has no active session with the specified token",
+			helloFromHost.Token)
 	}
 
 	// A way to terminate channel if we receive at least one error from one of the two Goroutines below
-	errChan := make(chan error, 2)
+	const numGoroutines = 2
+	errChan := make(chan error, numGoroutines)
 
 	// Process terminal input and other commands from the Guest
 	go func() {
@@ -131,6 +133,7 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 			outputFromHost := requestFromHost.GetOutput()
 			if outputFromHost == nil {
 				errChan <- status.Errorf(codes.FailedPrecondition, "expected a Data message")
+				return
 			}
 
 			select {

@@ -1,3 +1,4 @@
+// nolint:testpackage // we intentionally don't use a separate test package to call internal TerminalServer methods
 package server
 
 import (
@@ -14,7 +15,7 @@ func TestTerminalRegistrationUnregistration(t *testing.T) {
 
 	terminal := terminal.New("doesn't matter")
 
-	terminalServer.registerTerminal(terminal)
+	require.NoError(t, terminalServer.registerTerminal(terminal))
 	require.NotNil(t, terminalServer.findTerminal(terminal.Locator()))
 
 	terminalServer.unregisterTerminal(terminal)
