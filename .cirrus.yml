@@ -1,3 +1,11 @@
+container:
+  image: golang:latest
+
+task:
+  name: Test
+  test_script:
+    - go test ./...
+
 task:
   name: JavaScript Protocol Buffers and gRPC code-generation
   container:
