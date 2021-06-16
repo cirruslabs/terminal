@@ -60,10 +60,10 @@ func New(opts ...Option) (*TerminalServer, error) {
 		}
 	}
 	if ts.guestAddress == "" {
-		ts.guestAddress = "0.0.0.0:8080"
+		ts.guestAddress = "0.0.0.0:0"
 	}
 	if ts.hostAddress == "" {
-		ts.hostAddress = "0.0.0.0:8081"
+		ts.hostAddress = "0.0.0.0:0"
 	}
 
 	var err error
