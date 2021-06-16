@@ -42,6 +42,10 @@ func (terminal *Terminal) RegisterSession(session *session.Session) error {
 		return fmt.Errorf("refusing to register new session because terminal is shutting down")
 	}
 
+	if _, ok := terminal.sessions[session.Token()]; ok {
+		return fmt.Errorf("attempted to register multiple sessions with the same token")
+	}
+
 	terminal.sessions[session.Token()] = session
 
 	return nil

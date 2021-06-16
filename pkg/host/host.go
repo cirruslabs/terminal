@@ -17,8 +17,8 @@ import (
 
 const (
 	defaultServerAddress = "terminal.cirrus-ci.com"
-	defaultWidthColumns = 80
-	defaultHeightRows = 24
+	defaultWidthColumns  = 80
+	defaultHeightRows    = 24
 )
 
 var (

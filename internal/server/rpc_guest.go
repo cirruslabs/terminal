@@ -20,7 +20,7 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 	}
 
 	// Find a terminal with the requested locator
-	terminal := ts.FindTerminal(helloFromGuest.Locator)
+	terminal := ts.findTerminal(helloFromGuest.Locator)
 	if terminal == nil {
 		return status.Errorf(codes.NotFound, "terminal with locator %q is not registered on this server",
 			helloFromGuest.Locator)

@@ -17,5 +17,5 @@ type TerminalHost struct {
 	locatorCallback LocatorCallback
 
 	lastActivityLock sync.Mutex
-	lastActivity time.Time
+	lastActivity     time.Time
 }

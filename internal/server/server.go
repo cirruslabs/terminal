@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/internal/server/terminal"
 	"github.com/google/uuid"
@@ -145,14 +146,20 @@ func (ts *TerminalServer) HostServerAddress() string {
 	return ts.hostListener.Addr().String()
 }
 
-func (ts *TerminalServer) RegisterTerminal(terminal *terminal.Terminal) {
+func (ts *TerminalServer) registerTerminal(terminal *terminal.Terminal) error {
 	ts.terminalsLock.Lock()
 	defer ts.terminalsLock.Unlock()
 
+	if _, ok := ts.terminals[terminal.Locator()]; ok {
+		return fmt.Errorf("attempted to register multiple terminals with the same locator")
+	}
+
 	ts.terminals[terminal.Locator()] = terminal
+
+	return nil
 }
 
-func (ts *TerminalServer) FindTerminal(locator string) *terminal.Terminal {
+func (ts *TerminalServer) findTerminal(locator string) *terminal.Terminal {
 	ts.terminalsLock.RLock()
 	defer ts.terminalsLock.RUnlock()
 
@@ -164,7 +171,7 @@ func (ts *TerminalServer) FindTerminal(locator string) *terminal.Terminal {
 	return terminal
 }
 
-func (ts *TerminalServer) UnregisterTerminal(terminal *terminal.Terminal) {
+func (ts *TerminalServer) unregisterTerminal(terminal *terminal.Terminal) {
 	ts.terminalsLock.Lock()
 	defer ts.terminalsLock.Unlock()
 

@@ -22,8 +22,10 @@ func (ts *TerminalServer) ControlChannel(channel api.HostService_ControlChannelS
 	terminal := terminal.New(ts.generateLocator(), terminal.WithTrustedSecret(helloFromGuest.TrustedSecret))
 	defer terminal.Close()
 
-	ts.RegisterTerminal(terminal)
-	defer ts.UnregisterTerminal(terminal)
+	if err := ts.registerTerminal(terminal); err != nil {
+		return err
+	}
+	defer ts.unregisterTerminal(terminal)
 
 	// Tell the Host it's locator
 	if err := channel.Send(&api.HostControlResponse{
@@ -70,7 +72,7 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 		return status.Errorf(codes.FailedPrecondition, "expected a Hello message")
 	}
 
-	terminal := ts.FindTerminal(helloFromHost.Locator)
+	terminal := ts.findTerminal(helloFromHost.Locator)
 	if terminal == nil {
 		return status.Errorf(codes.NotFound, "terminal with locator %q not found", helloFromHost.Locator)
 	}
