@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"io"
+	"os"
 	"os/exec"
 	"time"
 )
@@ -198,7 +199,7 @@ func (th *TerminalHost) launchDataChannel(
 	<-subCtx.Done()
 }
 
-func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty io.Writer) {
+func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *os.File) {
 	for {
 		th.updateLastActivity()
 
@@ -211,14 +212,19 @@ func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, s
 			return
 		}
 
-		input := dataFromServer.GetInput()
-		if input == nil {
-			th.logger.Warnf("should've received a Data message")
-			return
-		}
-
-		if _, err := shellPty.Write(input.Data); err != nil {
-			th.logger.Warnf("should've received a Data message")
+		switch op := dataFromServer.Operation.(type) {
+		case *api.HostDataResponse_Input:
+			if _, err := shellPty.Write(op.Input.Data); err != nil {
+				th.logger.Warnf("failed to write to PTY: %v", err)
+				return
+			}
+		case *api.HostDataResponse_ChangeDimensions:
+			if err := pty.Setsize(shellPty, terminalDimensionsToPtyWinsize(op.ChangeDimensions)); err != nil {
+				th.logger.Warnf("failed to resize PTY: %v", err)
+				return
+			}
+		default:
+			th.logger.Warnf("should've received a Data or a ChangeDimensions message")
 			return
 		}
 	}
