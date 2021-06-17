@@ -1,8 +1,16 @@
 package host
 
+import "github.com/sirupsen/logrus"
+
 type Option func(*TerminalHost)
 
 type LocatorCallback func(string)
+
+func WithLogger(logger *logrus.Logger) Option {
+	return func(th *TerminalHost) {
+		th.logger = logger
+	}
+}
 
 func WithServerAddress(address string) Option {
 	return func(th *TerminalHost) {
