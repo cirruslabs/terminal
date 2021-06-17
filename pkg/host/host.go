@@ -231,7 +231,8 @@ func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, s
 }
 
 func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient, shellPty io.Reader) {
-	buf := make([]byte, 4096)
+	const bufSize = 4096
+	buf := make([]byte, bufSize)
 
 	for {
 		th.updateLastActivity()
