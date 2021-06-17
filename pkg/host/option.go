@@ -24,9 +24,9 @@ func WithServerInsecure() Option {
 	}
 }
 
-func WithTrustedSecret(trustedPassword string) Option {
+func WithTrustedSecret(trustedSecret string) Option {
 	return func(th *TerminalHost) {
-		th.trustedSecret = trustedPassword
+		th.trustedSecret = trustedSecret
 	}
 }
 
