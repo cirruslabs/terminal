@@ -24,8 +24,9 @@ type TerminalServer struct {
 	terminalsLock sync.RWMutex
 	terminals     map[string]*terminal.Terminal
 
-	guestAddress  string
-	guestListener net.Listener
+	guestAddress               string
+	guestListener              net.Listener
+	guestUsesNoGRPCWebWrapping bool
 	api.UnimplementedGuestServiceServer
 
 	hostAddress  string
@@ -82,7 +83,7 @@ func New(opts ...Option) (*TerminalServer, error) {
 	return ts, nil
 }
 
-func (ts *TerminalServer) Run(ctx context.Context) error {
+func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	// Create a sub-context to let the first failing Goroutine to start the cancellation process
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -102,40 +103,59 @@ func (ts *TerminalServer) Run(ctx context.Context) error {
 			}
 		}
 	}()
+	defer hostServer.GracefulStop()
 
 	// gRPC-Web server that deals with Guests
 	guestServer := grpc.NewServer()
 	api.RegisterGuestServiceServer(guestServer, ts)
 
-	// Since we use gRPC-Web with Websockets transport, we need additional wrapping
-	wrappedGuestServer := grpcweb.WrapServer(
-		guestServer,
-		grpcweb.WithWebsockets(true),
-		grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
-	)
+	// nolint:nestif // moving these into separate functions would make the whole thing even more complicated
+	if ts.guestUsesNoGRPCWebWrapping {
+		go func() {
+			defer cancel()
 
-	guestHTTPServer := http.Server{
-		Handler: wrappedGuestServer,
-	}
+			ts.logger.Infof("starting GuestService gRPC server at %s", ts.guestListener.Addr().String())
 
-	go func() {
-		defer cancel()
-
-		ts.logger.Infof("starting GuestService gRPC-Web server at %s", ts.guestListener.Addr().String())
-
-		if err := guestHTTPServer.Serve(ts.guestListener); err != nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
+			if err := guestServer.Serve(ts.guestListener); err != nil {
+				if !errors.Is(err, grpc.ErrServerStopped) {
+					ts.logger.Warnf("GuestService gRPC server failed: %v", err)
+				}
 			}
+		}()
+
+		defer guestServer.GracefulStop()
+	} else {
+		// Since we use gRPC-Web with Websockets transport, we need additional wrapping
+		wrappedGuestServer := grpcweb.WrapServer(
+			guestServer,
+			grpcweb.WithWebsockets(true),
+			grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
+		)
+
+		guestHTTPServer := http.Server{
+			Handler: wrappedGuestServer,
 		}
-	}()
+
+		go func() {
+			defer cancel()
+
+			ts.logger.Infof("starting GuestService gRPC-Web server at %s", ts.guestListener.Addr().String())
+
+			if err := guestHTTPServer.Serve(ts.guestListener); err != nil {
+				if !errors.Is(err, http.ErrServerClosed) {
+					ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
+				}
+			}
+		}()
+
+		defer func() {
+			if localErr := guestHTTPServer.Shutdown(context.Background()); localErr != nil {
+				err = localErr
+			}
+		}()
+	}
 
 	<-subCtx.Done()
-
-	hostServer.GracefulStop()
-	if err := guestHTTPServer.Shutdown(context.Background()); err != nil {
-		return err
-	}
 
 	return nil
 }
