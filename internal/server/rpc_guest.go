@@ -49,6 +49,10 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 		return channel.Context().Err()
 	}
 
+	// A way to terminate channel if we receive at least one error from one of the two Goroutines below
+	const numGoroutines = 2
+	errChan := make(chan error, numGoroutines)
+
 	// Process terminal output from the Host
 	go func() {
 		for {
@@ -61,39 +65,52 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 						},
 					},
 				}); err != nil {
-					ts.logger.Warnf("failed to send <>: %v", err)
+					errChan <- err
 					return
 				}
+			case <-channel.Context().Done():
+				errChan <- nil
+				return
 			case <-session.Context().Done():
+				errChan <- nil
 				return
 			}
 		}
 	}()
 
-	// Process terminal input and other commands from the Guest
-	for {
-		requestFromGuest, err = channel.Recv()
-		if err != nil {
-			return err
-		}
+	go func() {
+		// Process terminal input and other commands from the Guest
+		for {
+			requestFromGuest, err = channel.Recv()
+			if err != nil {
+				errChan <- err
+				return
+			}
 
-		switch msg := requestFromGuest.Operation.(type) {
-		case *api.GuestTerminalRequest_ChangeDimensions:
-			select {
-			case session.ChangeDimensionsChan <- msg.ChangeDimensions:
-				continue
-			case <-session.Context().Done():
-				return nil
+			switch msg := requestFromGuest.Operation.(type) {
+			case *api.GuestTerminalRequest_ChangeDimensions:
+				select {
+				case session.ChangeDimensionsChan <- msg.ChangeDimensions:
+					continue
+				case <-channel.Context().Done():
+					return
+				case <-session.Context().Done():
+					return
+				}
+			case *api.GuestTerminalRequest_Input:
+				select {
+				case session.TerminalInputChan <- msg.Input.Data:
+					continue
+				case <-channel.Context().Done():
+					return
+				case <-session.Context().Done():
+					return
+				}
+			default:
+				errChan <- status.Errorf(codes.FailedPrecondition, "expected a TerminalDimensions or a Data message")
 			}
-		case *api.GuestTerminalRequest_Input:
-			select {
-			case session.TerminalInputChan <- msg.Input.Data:
-				continue
-			case <-session.Context().Done():
-				return nil
-			}
-		default:
-			return status.Errorf(codes.FailedPrecondition, "expected a TerminalDimensions or a Data message")
 		}
-	}
+	}()
+
+	return <-errChan
 }
