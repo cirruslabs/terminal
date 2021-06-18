@@ -13,6 +13,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -272,6 +273,13 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 
 func determineShellPath() string {
 	shellPath := "/bin/sh"
+
+	// Prefer Zsh on macOS
+	if runtime.GOOS == "darwin" {
+		if zshPath, err := exec.LookPath("zsh"); err == nil {
+			return zshPath
+		}
+	}
 
 	if bashPath, err := exec.LookPath("bash"); err == nil {
 		shellPath = bashPath
