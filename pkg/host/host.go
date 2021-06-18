@@ -101,7 +101,12 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	for {
 		controlFromServer, err = controlChannel.Recv()
 		if err != nil {
-			return err
+			select {
+			case <-controlChannel.Context().Done():
+				return controlChannel.Context().Err()
+			default:
+				return err
+			}
 		}
 		dataChannelRequest := controlFromServer.GetDataChannelRequest()
 		if dataChannelRequest == nil {
@@ -205,7 +210,10 @@ func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, s
 
 		dataFromServer, err := dataChannel.Recv()
 		if err != nil {
-			if !errors.Is(err, io.EOF) {
+			select {
+			case <-dataChannel.Context().Done():
+				// ignore
+			default:
 				th.logger.Warnf("failed to receive Data message from data channel: %v", err)
 			}
 
