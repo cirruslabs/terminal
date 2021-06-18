@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -119,13 +120,17 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 		}
 	}
 	waitForCanary := func(canary string) {
+		buf := bytes.NewBuffer([]byte{})
+
 		for {
 			helloFromServer, err := terminalChannel.Recv()
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			if bytes.Contains(helloFromServer.GetOutput().Data, []byte(canary)) {
+			buf.Write(helloFromServer.GetOutput().Data)
+
+			if strings.Contains(buf.String(), canary) {
 				break
 			}
 		}
