@@ -88,7 +88,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// (using arbitrary canary values with low probability of appearing in the terminal output)
 	const (
 		initialTerminalWidthColumns = 123
-		initialTerminalHeightRows
+		initialTerminalHeightRows   = 456
 	)
 
 	if err := terminalChannel.Send(&api.GuestTerminalRequest{
