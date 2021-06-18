@@ -8,7 +8,7 @@ import (
 )
 
 func (ts *TerminalServer) ControlChannel(channel api.HostService_ControlChannelServer) error {
-	// Host begins the control channel by sending a Hello message with the credentials it trusts
+	// Host begins with sending a Hello message that contains the credentials it trusts
 	requestFromGuest, err := channel.Recv()
 	if err != nil {
 		return err
