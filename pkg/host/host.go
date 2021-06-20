@@ -95,7 +95,9 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	}
 
 	if th.locatorCallback != nil {
-		th.locatorCallback(helloFromServer.Locator)
+		if err := th.locatorCallback(helloFromServer.Locator); err != nil {
+			return err
+		}
 	}
 
 	// Loop waiting for the data channels to be requested

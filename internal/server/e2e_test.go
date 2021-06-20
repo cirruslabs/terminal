@@ -56,8 +56,9 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	hostOpts = append(hostOpts, host.WithTrustedSecret(secret))
 
 	locatorChan := make(chan string)
-	hostOpts = append(hostOpts, host.WithLocatorCallback(func(locator string) {
+	hostOpts = append(hostOpts, host.WithLocatorCallback(func(locator string) error {
 		locatorChan <- locator
+		return nil
 	}))
 
 	terminalHost, err := host.New(hostOpts...)
