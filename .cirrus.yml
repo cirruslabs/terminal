@@ -1,0 +1,29 @@
+container:
+  image: golang:latest
+
+task:
+  name: Test
+  test_script:
+    - go test ./...
+
+task:
+  name: JavaScript Protocol Buffers and gRPC code-generation
+  container:
+    image: node:latest
+  env:
+    OUTDIR: js-codegen
+  prepare_script:
+    - apt-get update && apt-get -y install protobuf-compiler
+    - npm install ts-protoc-gen
+  code_generation_script:
+    - mkdir $OUTDIR
+    - >
+      protoc
+      --plugin="protoc-gen-ts=node_modules/.bin/protoc-gen-ts"
+      --js_out="import_style=commonjs,binary:$OUTDIR"
+      --ts_out="service=grpc-web:$OUTDIR"
+      -I proto/
+      proto/terminal.proto
+    - find $OUTDIR
+  js_proto_codegen_artifacts:
+    path: $OUTDIR/*
