@@ -13,13 +13,13 @@ func (ts *TerminalServer) ControlChannel(channel api.HostService_ControlChannelS
 	if err != nil {
 		return err
 	}
-	helloFromGuest := requestFromHost.GetHello()
-	if helloFromGuest == nil {
+	helloFromHost := requestFromHost.GetHello()
+	if helloFromHost == nil {
 		return status.Errorf(codes.FailedPrecondition, "expected a Hello message")
 	}
 
 	// Create and register a new terminal associated with this Host
-	terminal := terminal.New(ts.generateLocator(), terminal.WithTrustedSecret(helloFromGuest.TrustedSecret))
+	terminal := terminal.New(ts.generateLocator(), terminal.WithTrustedSecret(helloFromHost.TrustedSecret))
 	defer terminal.Close()
 
 	if err := ts.registerTerminal(terminal); err != nil {
