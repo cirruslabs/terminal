@@ -16,7 +16,7 @@ The whole system consists of three components:
   * currently works over gRPC
 * `guest` — connects to the `hosts` through a `server` and consumes terminal sessions
   * currently works over gRPC-Web, however, in the future, it's technically possible to provide an ability to connect to the `hosts` via `server` using a standard SSH client
-* `server` — acts as a rendezvous point between `guest` and `host`
+* `server` — acts as a rendezvous point between `host ` and `guest `
 
 The most up-to-date protocol specification can be found in the [`terminal.proto`](proto/terminal.proto), but to give a bit more visual picture, the overall data flow looks like this:
 
