@@ -150,10 +150,10 @@ func (th *TerminalHost) launchDataChannel(
 ) {
 	th.updateLastActivity()
 
-	subCtx, cancel := context.WithCancel(ctx)
+	dataChannelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	dataChannel, err := hostService.DataChannel(subCtx)
+	dataChannel, err := hostService.DataChannel(dataChannelCtx)
 	if err != nil {
 		th.logger.Warnf("failed to open data channel: %v", err)
 		return
@@ -210,7 +210,7 @@ func (th *TerminalHost) launchDataChannel(
 		th.ioFromPty(dataChannel, shellPty)
 	}()
 
-	<-subCtx.Done()
+	<-dataChannelCtx.Done()
 }
 
 func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *os.File) {
