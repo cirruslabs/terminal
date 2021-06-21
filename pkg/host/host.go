@@ -148,8 +148,6 @@ func (th *TerminalHost) launchDataChannel(
 	locator string,
 	dataChannelRequest *api.HostControlResponse_DataChannelRequest,
 ) {
-	th.updateLastActivity()
-
 	dataChannelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -257,8 +255,6 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 
 			return
 		}
-
-		th.updateLastActivity()
 
 		if err := dataChannel.Send(&api.HostDataRequest{
 			Operation: &api.HostDataRequest_Output{
