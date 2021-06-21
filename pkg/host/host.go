@@ -217,10 +217,7 @@ func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, s
 	for {
 		dataFromServer, err := dataChannel.Recv()
 		if err != nil {
-			select {
-			case <-dataChannel.Context().Done():
-				// ignore
-			default:
+			if !errors.Is(err, io.EOF) && dataChannel.Context().Err() == nil {
 				th.logger.Warnf("failed to receive Data message from data channel: %v", err)
 			}
 
@@ -270,7 +267,7 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 				},
 			},
 		}); err != nil {
-			if !errors.Is(err, io.EOF) {
+			if !errors.Is(err, io.EOF) && dataChannel.Context().Err() == nil {
 				th.logger.Warnf("failed to send data from PTY: %v", err)
 			}
 
