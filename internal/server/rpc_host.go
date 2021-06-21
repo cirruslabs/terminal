@@ -55,7 +55,7 @@ func (ts *TerminalServer) ControlChannel(channel api.HostService_ControlChannelS
 			}
 		case <-channel.Context().Done():
 			// The Guest has left and there's nothing we can do about it except close and unregister it's terminal
-			return channel.Context().Err()
+			return nil
 		}
 	}
 }
@@ -107,11 +107,11 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 						ChangeDimensions: newDimensions,
 					},
 				}
+			case <-channel.Context().Done():
+				errChan <- nil
+				return
 			case <-session.Context().Done():
 				errChan <- session.Context().Err()
-				return
-			case <-channel.Context().Done():
-				errChan <- channel.Context().Err()
 				return
 			}
 
@@ -139,11 +139,11 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 			select {
 			case session.TerminalOutputChan <- outputFromHost.Data:
 				continue
+			case <-channel.Context().Done():
+				errChan <- nil
+				return
 			case <-session.Context().Done():
 				errChan <- session.Context().Err()
-				return
-			case <-channel.Context().Done():
-				errChan <- channel.Context().Err()
 				return
 			}
 		}
