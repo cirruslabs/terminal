@@ -185,12 +185,7 @@ func (ts *TerminalServer) findTerminal(locator string) *terminal.Terminal {
 	ts.terminalsLock.RLock()
 	defer ts.terminalsLock.RUnlock()
 
-	terminal, ok := ts.terminals[locator]
-	if !ok {
-		return nil
-	}
-
-	return terminal
+	return ts.terminals[locator]
 }
 
 func (ts *TerminalServer) unregisterTerminal(terminal *terminal.Terminal) {
