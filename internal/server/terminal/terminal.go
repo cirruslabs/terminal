@@ -73,12 +73,7 @@ func (terminal *Terminal) FindSession(token string) *session.Session {
 	terminal.sessionsLock.RLock()
 	defer terminal.sessionsLock.RUnlock()
 
-	session, ok := terminal.sessions[token]
-	if !ok {
-		return nil
-	}
-
-	return session
+	return terminal.sessions[token]
 }
 
 func (terminal *Terminal) Locator() string {
