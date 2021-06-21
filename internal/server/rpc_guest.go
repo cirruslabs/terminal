@@ -46,7 +46,7 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 		// OK, proceed with session I/O below
 	case <-channel.Context().Done():
 		// Connection with the Guest was terminated before the Host had a chance to pick up our session
-		return channel.Context().Err()
+		return nil
 	}
 
 	// A way to terminate channel if we receive at least one error from one of the two Goroutines below
@@ -72,7 +72,7 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 				errChan <- nil
 				return
 			case <-session.Context().Done():
-				errChan <- nil
+				errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
 				return
 			}
 		}
@@ -93,8 +93,10 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 				case session.ChangeDimensionsChan <- msg.ChangeDimensions:
 					continue
 				case <-channel.Context().Done():
+					errChan <- nil
 					return
 				case <-session.Context().Done():
+					errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
 					return
 				}
 			case *api.GuestTerminalRequest_Input:
@@ -102,12 +104,15 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 				case session.TerminalInputChan <- msg.Input.Data:
 					continue
 				case <-channel.Context().Done():
+					errChan <- nil
 					return
 				case <-session.Context().Done():
+					errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
 					return
 				}
 			default:
 				errChan <- status.Errorf(codes.FailedPrecondition, "expected a TerminalDimensions or a Data message")
+				return
 			}
 		}
 	}()
