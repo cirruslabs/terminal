@@ -105,6 +105,11 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 		controlFromServer, err = controlChannel.Recv()
 		if err != nil {
 			select {
+			// A special case here is needed to prevent
+			// us from returning the gRPC's Status struct,
+			// because context.Cancelled would be more
+			// appropriate, e.g. to check for the exact
+			// error in tests
 			case <-controlChannel.Context().Done():
 				return controlChannel.Context().Err()
 			default:
