@@ -111,7 +111,7 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 				errChan <- nil
 				return
 			case <-session.Context().Done():
-				errChan <- session.Context().Err()
+				errChan <- status.Errorf(codes.Aborted, "terminal channel was closed by the guest")
 				return
 			}
 
@@ -143,7 +143,7 @@ func (ts *TerminalServer) DataChannel(channel api.HostService_DataChannelServer)
 				errChan <- nil
 				return
 			case <-session.Context().Done():
-				errChan <- session.Context().Err()
+				errChan <- status.Errorf(codes.Aborted, "terminal channel was closed by the guest")
 				return
 			}
 		}
