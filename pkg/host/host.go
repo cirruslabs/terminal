@@ -177,7 +177,8 @@ func (th *TerminalHost) launchDataChannel(
 
 	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dataChannelRequest.RequestedDimensions))
 	if err != nil {
-		th.logger.Warnf("failed to start PTY: %v", err)
+		th.logger.Warnf("failed to create PTY: %v", err)
+		return
 	}
 
 	th.logger.Debugf("started shell process with PID %d", shellCmd.Process.Pid)
