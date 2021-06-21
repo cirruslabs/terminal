@@ -9,11 +9,11 @@ import (
 
 func (ts *TerminalServer) ControlChannel(channel api.HostService_ControlChannelServer) error {
 	// Host begins with sending a Hello message that contains the credentials it trusts
-	requestFromGuest, err := channel.Recv()
+	requestFromHost, err := channel.Recv()
 	if err != nil {
 		return err
 	}
-	helloFromGuest := requestFromGuest.GetHello()
+	helloFromGuest := requestFromHost.GetHello()
 	if helloFromGuest == nil {
 		return status.Errorf(codes.FailedPrecondition, "expected a Hello message")
 	}
