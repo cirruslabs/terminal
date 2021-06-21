@@ -215,8 +215,6 @@ func (th *TerminalHost) launchDataChannel(
 
 func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *os.File) {
 	for {
-		th.updateLastActivity()
-
 		dataFromServer, err := dataChannel.Recv()
 		if err != nil {
 			select {
@@ -228,6 +226,8 @@ func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, s
 
 			return
 		}
+
+		th.updateLastActivity()
 
 		switch op := dataFromServer.Operation.(type) {
 		case *api.HostDataResponse_Input:
@@ -252,8 +252,6 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 	buf := make([]byte, bufSize)
 
 	for {
-		th.updateLastActivity()
-
 		n, err := shellPty.Read(buf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
@@ -262,6 +260,8 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 
 			return
 		}
+
+		th.updateLastActivity()
 
 		if err := dataChannel.Send(&api.HostDataRequest{
 			Operation: &api.HostDataRequest_Output{
