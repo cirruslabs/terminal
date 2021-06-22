@@ -4,7 +4,7 @@ import "github.com/sirupsen/logrus"
 
 type Option func(*TerminalHost)
 
-type LocatorCallback func(string)
+type LocatorCallback func(string) error
 
 func WithLogger(logger *logrus.Logger) Option {
 	return func(th *TerminalHost) {

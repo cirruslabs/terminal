@@ -95,7 +95,9 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	}
 
 	if th.locatorCallback != nil {
-		th.locatorCallback(helloFromServer.Locator)
+		if err := th.locatorCallback(helloFromServer.Locator); err != nil {
+			return err
+		}
 	}
 
 	// Loop waiting for the data channels to be requested
@@ -103,6 +105,11 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 		controlFromServer, err = controlChannel.Recv()
 		if err != nil {
 			select {
+			// A special case here is needed to prevent
+			// us from returning the gRPC's Status struct,
+			// because context.Cancelled would be more
+			// appropriate, e.g. to check for the exact
+			// error in tests
 			case <-controlChannel.Context().Done():
 				return controlChannel.Context().Err()
 			default:
@@ -141,12 +148,10 @@ func (th *TerminalHost) launchDataChannel(
 	locator string,
 	dataChannelRequest *api.HostControlResponse_DataChannelRequest,
 ) {
-	th.updateLastActivity()
-
-	subCtx, cancel := context.WithCancel(ctx)
+	dataChannelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	dataChannel, err := hostService.DataChannel(subCtx)
+	dataChannel, err := hostService.DataChannel(dataChannelCtx)
 	if err != nil {
 		th.logger.Warnf("failed to open data channel: %v", err)
 		return
@@ -170,7 +175,8 @@ func (th *TerminalHost) launchDataChannel(
 
 	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dataChannelRequest.RequestedDimensions))
 	if err != nil {
-		th.logger.Warnf("failed to start PTY: %v", err)
+		th.logger.Warnf("failed to create PTY: %v", err)
+		return
 	}
 
 	th.logger.Debugf("started shell process with PID %d", shellCmd.Process.Pid)
@@ -202,24 +208,21 @@ func (th *TerminalHost) launchDataChannel(
 		th.ioFromPty(dataChannel, shellPty)
 	}()
 
-	<-subCtx.Done()
+	<-dataChannelCtx.Done()
 }
 
 func (th *TerminalHost) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *os.File) {
 	for {
-		th.updateLastActivity()
-
 		dataFromServer, err := dataChannel.Recv()
 		if err != nil {
-			select {
-			case <-dataChannel.Context().Done():
-				// ignore
-			default:
+			if !errors.Is(err, io.EOF) && dataChannel.Context().Err() == nil {
 				th.logger.Warnf("failed to receive Data message from data channel: %v", err)
 			}
 
 			return
 		}
+
+		th.updateLastActivity()
 
 		switch op := dataFromServer.Operation.(type) {
 		case *api.HostDataResponse_Input:
@@ -244,8 +247,6 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 	buf := make([]byte, bufSize)
 
 	for {
-		th.updateLastActivity()
-
 		n, err := shellPty.Read(buf)
 		if err != nil {
 			if !errors.Is(err, io.EOF) {
@@ -262,7 +263,7 @@ func (th *TerminalHost) ioFromPty(dataChannel api.HostService_DataChannelClient,
 				},
 			},
 		}); err != nil {
-			if !errors.Is(err, io.EOF) {
+			if !errors.Is(err, io.EOF) && dataChannel.Context().Err() == nil {
 				th.logger.Warnf("failed to send data from PTY: %v", err)
 			}
 
