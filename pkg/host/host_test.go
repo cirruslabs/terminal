@@ -1,3 +1,5 @@
+// +build !windows
+
 // nolint:testpackage // we intentionally don't use a separate test package to call the registerSession() method
 package host
 
