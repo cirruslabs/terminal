@@ -3,6 +3,7 @@ package host
 import (
 	"context"
 	"errors"
+	"github.com/cirruslabs/terminal/pkg/host/session"
 	"time"
 )
 
@@ -18,4 +19,12 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 
 func (th *TerminalHost) LastActivity() time.Time {
 	return time.Time{}
+}
+
+func (th *TerminalHost) NumSessions() int {
+	return 0
+}
+
+func (th *TerminalHost) NumSessionsFunc(f func(session *session.Session) bool) int {
+	return 0
 }
