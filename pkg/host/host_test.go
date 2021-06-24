@@ -1,34 +1,29 @@
-// +build !windows
-
-// nolint:testpackage // we intentionally don't use a separate test package to call the updateLastActivity() method
+// nolint:testpackage // we intentionally don't use a separate test package to call the registerSession() method
 package host
 
 import (
-	"github.com/cirruslabs/terminal/internal/api"
-	"github.com/creack/pty"
+	"github.com/cirruslabs/terminal/pkg/host/session"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"testing"
 	"time"
 )
 
-func TestLastActivitySimple(t *testing.T) {
-	terminalHost, err := New(WithTrustedSecret("doesn't matter for this test"))
+func TestNumSessionsNormalAndFunc(t *testing.T) {
+	terminalHost, err := New(WithTrustedSecret("doesn't matter"))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	require.Equal(t, time.Time{}, terminalHost.LastActivity())
+	session1 := session.New(nil, "first one")
+	terminalHost.registerSession(session1)
 
-	terminalHost.updateLastActivity()
-	require.WithinDuration(t, terminalHost.LastActivity(), time.Now(), time.Second)
-}
+	session2 := session.New(nil, "second one")
+	terminalHost.registerSession(session2)
 
-func TestTerminalDimensionsToPtyWinsize(t *testing.T) {
-	assert.Equal(t, &pty.Winsize{Rows: 24, Cols: 80},
-		terminalDimensionsToPtyWinsize(nil))
-	assert.Equal(t, &pty.Winsize{},
-		terminalDimensionsToPtyWinsize(&api.TerminalDimensions{}))
-	assert.Equal(t, &pty.Winsize{Rows: 48, Cols: 160},
-		terminalDimensionsToPtyWinsize(&api.TerminalDimensions{WidthColumns: 160, HeightRows: 48}))
+	assert.Equal(t, 2, terminalHost.NumSessions())
+	assert.Equal(t, 2, terminalHost.NumSessionsFunc(func(session *session.Session) bool {
+		uninitializedTime := time.Time{}
+
+		return session.LastActivity() == uninitializedTime
+	}))
 }

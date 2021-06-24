@@ -10,6 +10,7 @@ import (
 	"github.com/cirruslabs/terminal/pkg/host"
 	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"net/http"
@@ -160,11 +161,17 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	queryTerminalSize()
 	waitForCanary(fmt.Sprintf("%d\r\n%d", onTheFlyTerminalWidthColumns, onTheFlyTerminalHeightRows))
 
+	assert.Equal(t, 1, terminalHost.NumSessions(), "terminal host should run exactly 1 session")
+
 	cancel()
-	if err := <-terminalServerErrChan; err != nil && !errors.Is(err, context.Canceled) {
+
+	if err := <-terminalHostErrChan; err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
-	if err := <-terminalHostErrChan; err != nil && !errors.Is(err, context.Canceled) {
+
+	assert.Equal(t, 0, terminalHost.NumSessions(), "terminal host should not run any sessions")
+
+	if err := <-terminalServerErrChan; err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}
 }

@@ -1,9 +1,9 @@
 package host
 
 import (
+	"github.com/cirruslabs/terminal/pkg/host/session"
 	"github.com/sirupsen/logrus"
 	"sync"
-	"time"
 )
 
 type TerminalHost struct {
@@ -16,6 +16,6 @@ type TerminalHost struct {
 
 	locatorCallback LocatorCallback
 
-	lastActivityLock sync.Mutex
-	lastActivity     time.Time
+	sessionsLock sync.Mutex
+	sessions     map[string]*session.Session
 }
