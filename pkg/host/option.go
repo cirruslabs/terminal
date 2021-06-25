@@ -18,12 +18,6 @@ func WithServerAddress(address string) Option {
 	}
 }
 
-func WithServerInsecure() Option {
-	return func(th *TerminalHost) {
-		th.serverInsecure = true
-	}
-}
-
 func WithTrustedSecret(trustedSecret string) Option {
 	return func(th *TerminalHost) {
 		th.trustedSecret = trustedSecret

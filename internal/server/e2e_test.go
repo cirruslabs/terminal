@@ -49,8 +49,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// Initialize terminal host
 	hostOpts := []host.Option{
 		host.WithLogger(logger),
-		host.WithServerAddress(terminalServer.HostServerAddress()),
-		host.WithServerInsecure(),
+		host.WithServerAddress("http://" + terminalServer.HostServerAddress()),
 	}
 
 	const secret = "fixed secret used in tests"
