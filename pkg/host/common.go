@@ -10,7 +10,6 @@ type TerminalHost struct {
 	logger *logrus.Logger
 
 	serverAddress  string
-	serverInsecure bool
 
 	trustedSecret string
 

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cirruslabs/cirrus-ci-agent/pkg/grpchelper"
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/pkg/host/session"
 	"github.com/sirupsen/logrus"
@@ -52,13 +53,9 @@ func New(opts ...Option) (*TerminalHost, error) {
 }
 
 func (th *TerminalHost) Run(ctx context.Context) error {
-	var dialOpts []grpc.DialOption
+	target, transportSecurity := grpchelper.TransportSettingsAsDialOption(th.serverAddress)
 
-	if th.serverInsecure {
-		dialOpts = append(dialOpts, grpc.WithInsecure())
-	}
-
-	clientConn, err := grpc.Dial(th.serverAddress, dialOpts...)
+	clientConn, err := grpc.Dial(target, transportSecurity)
 	if err != nil {
 		return err
 	}
