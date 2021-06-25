@@ -9,7 +9,7 @@ import (
 type TerminalHost struct {
 	logger *logrus.Logger
 
-	serverAddress  string
+	serverAddress string
 
 	trustedSecret string
 
