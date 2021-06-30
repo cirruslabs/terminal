@@ -9,4 +9,4 @@ FROM alpine:latest
 
 COPY --from=builder /build/terminal /usr/local/bin/terminal
 
-ENTRYPOINT ["/usr/local/bin/terminal"]
+CMD terminal serve
