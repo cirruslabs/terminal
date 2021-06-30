@@ -87,6 +87,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	hostServer := grpc.NewServer()
 	api.RegisterHostServiceServer(hostServer, ts)
 
+	// nolint:nestif // moving these into separate functions would make the whole thing even more complicated
 	if ts.guestUsesNoGRPCWebWrapping {
 		api.RegisterGuestServiceServer(hostServer, ts)
 	} else {
