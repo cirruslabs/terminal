@@ -147,6 +147,16 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		}
 	}()
 
+	defaultListener := mux.Match(cmux.Any())
+	go func() {
+		defer cancel()
+		if err := http.Serve(defaultListener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+		})); err != nil {
+			ts.logger.Warnf("Default server failed: %v", err)
+		}
+	}()
+
 	go func() {
 		defer cancel()
 
