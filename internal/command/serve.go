@@ -6,11 +6,12 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"net/http"
+	"os"
 	"strings"
 )
 
 var logLevel string
-var guestServerAddress, hostServerAddress string
+var serverAddress string
 var allowedOrigins []string
 
 func serve(cmd *cobra.Command, args []string) error {
@@ -33,8 +34,7 @@ func serve(cmd *cobra.Command, args []string) error {
 
 	terminalServer, err := server.New(
 		server.WithLogger(logger),
-		server.WithGuestServerAddress(guestServerAddress),
-		server.WithHostServerAddress(hostServerAddress),
+		server.WithServerAddress(serverAddress),
 		server.WithWebsocketOriginFunc(websocketOriginFunc),
 	)
 	if err != nil {
@@ -58,10 +58,13 @@ func newServeCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
 		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
 
-	cmd.PersistentFlags().StringVar(&guestServerAddress, "guest-server-address", "0.0.0.0:8080",
-		"address for the guest server to listen on")
-	cmd.PersistentFlags().StringVar(&hostServerAddress, "host-server-address", "0.0.0.0:8081",
-		"address for the host server to listen on")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	cmd.PersistentFlags().StringVarP(&serverAddress, "listen", "l", fmt.Sprintf(":%s", port),
+		"address to listen on")
 
 	cmd.PersistentFlags().StringSliceVar(&allowedOrigins, "allowed-origins", []string{},
 		"a list comma-separated origins that are allowed to talk with the guest's gRPC-Web WebSocket server")

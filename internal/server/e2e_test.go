@@ -49,7 +49,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// Initialize terminal host
 	hostOpts := []host.Option{
 		host.WithLogger(logger),
-		host.WithServerAddress("http://" + terminalServer.HostServerAddress()),
+		host.WithServerAddress("http://" + terminalServer.ServerAddress()),
 	}
 
 	const secret = "fixed secret used in tests"
@@ -76,7 +76,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	locator := <-locatorChan
 
 	// Emulate guest: open up a terminal channel, just like a web UI would do
-	clientConn, err := grpc.Dial(terminalServer.GuestServerAddress(), grpc.WithInsecure())
+	clientConn, err := grpc.Dial(terminalServer.ServerAddress(), grpc.WithInsecure())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -180,7 +180,7 @@ func TestWebsocketOriginChecking(t *testing.T) {
 
 	// Initialize terminal server
 	serverOpts := []server.Option{
-		server.WithGuestServerAddress("127.0.0.1:0"),
+		server.WithServerAddress("127.0.0.1:0"),
 	}
 
 	logger := logrus.New()
@@ -205,13 +205,14 @@ func TestWebsocketOriginChecking(t *testing.T) {
 
 	// Craft WebSocket URL and headers that should be generally acceptable by our gRPC-Web instance,
 	// excluding the Origin header
-	webSocketURL := "ws://" + terminalServer.GuestServerAddress() + "/GuestService/TerminalChannel"
+	webSocketURL := "ws://" + terminalServer.ServerAddress() + "/GuestService/TerminalChannel"
 	baseHeaders := http.Header{}
 	baseHeaders.Add("Sec-Websocket-Protocol", "grpc-websockets")
 
 	// Set an acceptable Origin header and ensure that the connection is upgraded
 	goodHeaders := baseHeaders.Clone()
 	goodHeaders.Add("Origin", goodOrigin)
+	goodHeaders.Add("Content-Type", "application/grpc-web-text")
 	_, resp, err := websocket.DefaultDialer.Dial(webSocketURL, goodHeaders)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
@@ -220,6 +221,7 @@ func TestWebsocketOriginChecking(t *testing.T) {
 	// Set an unacceptable Origin header and ensure the request is denied
 	badHeaders := baseHeaders.Clone()
 	badHeaders.Add("Origin", "https://bad.origin")
+	badHeaders.Add("Content-Type", "application/grpc-web-text")
 	_, resp, err = websocket.DefaultDialer.Dial(webSocketURL, badHeaders)
 	require.Equal(t, websocket.ErrBadHandshake, err)
 	require.Equal(t, http.StatusForbidden, resp.StatusCode)
