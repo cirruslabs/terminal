@@ -98,6 +98,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			cmux.HTTP1HeaderField("content-type", "application/grpc-web+proto"),
 			cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
 			cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
+			cmux.HTTP1HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
 		)
 		// gRPC-Web server that deals with Guests
 		guestServer := grpc.NewServer()
