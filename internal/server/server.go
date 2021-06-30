@@ -82,9 +82,11 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	defer cancel()
 
 	mux := cmux.New(ts.listener)
+	defer mux.Close()
 
 	// gRPC server that deals with Hosts
 	hostServer := grpc.NewServer()
+	defer hostServer.GracefulStop()
 	api.RegisterHostServiceServer(hostServer, ts)
 
 	// nolint:nestif // moving these into separate functions would make the whole thing even more complicated
@@ -143,13 +145,12 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			}
 		}
 	}()
-	defer hostServer.GracefulStop()
 
 	go func() {
 		defer cancel()
 
 		if err := mux.Serve(); err != nil {
-			ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
+			ts.logger.Warnf("mux server failed: %v", err)
 		}
 	}()
 
