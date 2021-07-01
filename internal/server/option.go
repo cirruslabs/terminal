@@ -22,12 +22,6 @@ func WithServerAddress(address string) Option {
 	}
 }
 
-func WithGuestUsesNoGRPCWebWrapping() Option {
-	return func(ts *TerminalServer) {
-		ts.guestUsesNoGRPCWebWrapping = true
-	}
-}
-
 func WithWebsocketOriginFunc(websocketOriginFunc WebsocketOriginFunc) Option {
 	return func(ts *TerminalServer) {
 		ts.websocketOriginFunc = websocketOriginFunc

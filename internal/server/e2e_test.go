@@ -32,9 +32,6 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 		return true
 	}))
 
-	// Disable gRPC-Web wrapping so that we can use a normal gRPC client that talks over HTTP/2 for this test
-	serverOpts = append(serverOpts, server.WithGuestUsesNoGRPCWebWrapping())
-
 	terminalServer, err := server.New(serverOpts...)
 	if err != nil {
 		t.Fatal(err)
