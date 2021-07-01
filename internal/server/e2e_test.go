@@ -32,8 +32,6 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 		return true
 	}))
 
-	serverOpts = append(serverOpts)
-
 	terminalServer, err := server.New(serverOpts...)
 	if err != nil {
 		t.Fatal(err)
