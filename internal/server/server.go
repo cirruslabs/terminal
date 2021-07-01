@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/sirupsen/logrus"
+	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
 	"io"
 	"net"
@@ -24,13 +25,12 @@ type TerminalServer struct {
 	terminalsLock sync.RWMutex
 	terminals     map[string]*terminal.Terminal
 
-	guestAddress               string
-	guestListener              net.Listener
-	guestUsesNoGRPCWebWrapping bool
-	api.UnimplementedGuestServiceServer
+	address  string
+	listener net.Listener
 
-	hostAddress  string
-	hostListener net.Listener
+	guestUsesNoGRPCWebWrapping bool
+
+	api.UnimplementedGuestServiceServer
 	api.UnimplementedHostServiceServer
 
 	websocketOriginFunc WebsocketOriginFunc
@@ -62,20 +62,13 @@ func New(opts ...Option) (*TerminalServer, error) {
 			return uuid.New().String()
 		}
 	}
-	if ts.guestAddress == "" {
-		ts.guestAddress = "0.0.0.0:0"
-	}
-	if ts.hostAddress == "" {
-		ts.hostAddress = "0.0.0.0:0"
+	if ts.address == "" {
+		ts.address = "0.0.0.0:0"
 	}
 
 	var err error
 
-	ts.guestListener, err = net.Listen("tcp", ts.guestAddress)
-	if err != nil {
-		return nil, err
-	}
-	ts.hostListener, err = net.Listen("tcp", ts.hostAddress)
+	ts.listener, err = net.Listen("tcp", ts.address)
 	if err != nil {
 		return nil, err
 	}
@@ -88,43 +81,28 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
+	mux := cmux.New(ts.listener)
+	defer mux.Close()
+
 	// gRPC server that deals with Hosts
 	hostServer := grpc.NewServer()
-	api.RegisterHostServiceServer(hostServer, ts)
-
-	go func() {
-		defer cancel()
-
-		ts.logger.Infof("starting HostService gRPC server at %s", ts.hostListener.Addr().String())
-
-		if err := hostServer.Serve(ts.hostListener); err != nil {
-			if !errors.Is(err, grpc.ErrServerStopped) {
-				ts.logger.Warnf("HostService gRPC server failed: %v", err)
-			}
-		}
-	}()
 	defer hostServer.GracefulStop()
-
-	// gRPC-Web server that deals with Guests
-	guestServer := grpc.NewServer()
-	api.RegisterGuestServiceServer(guestServer, ts)
+	api.RegisterHostServiceServer(hostServer, ts)
 
 	// nolint:nestif // moving these into separate functions would make the whole thing even more complicated
 	if ts.guestUsesNoGRPCWebWrapping {
-		go func() {
-			defer cancel()
-
-			ts.logger.Infof("starting GuestService gRPC server at %s", ts.guestListener.Addr().String())
-
-			if err := guestServer.Serve(ts.guestListener); err != nil {
-				if !errors.Is(err, grpc.ErrServerStopped) {
-					ts.logger.Warnf("GuestService gRPC server failed: %v", err)
-				}
-			}
-		}()
-
-		defer guestServer.GracefulStop()
+		api.RegisterGuestServiceServer(hostServer, ts)
 	} else {
+		guestListener := mux.Match(
+			cmux.HTTP1HeaderField("content-type", "application/grpc-web+proto"),
+			cmux.HTTP1HeaderField("content-type", "application/grpc-web+proto"),
+			cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
+			cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
+			cmux.HTTP1HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
+		)
+		// gRPC-Web server that deals with Guests
+		guestServer := grpc.NewServer()
+		api.RegisterGuestServiceServer(guestServer, ts)
 		// Since we use gRPC-Web with Websockets transport, we need additional wrapping
 		wrappedGuestServer := grpcweb.WrapServer(
 			guestServer,
@@ -139,9 +117,9 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		go func() {
 			defer cancel()
 
-			ts.logger.Infof("starting GuestService gRPC-Web server at %s", ts.guestListener.Addr().String())
+			ts.logger.Infof("starting GuestService gRPC-Web server at %s", guestListener.Addr().String())
 
-			if err := guestHTTPServer.Serve(ts.guestListener); err != nil {
+			if err := guestHTTPServer.Serve(guestListener); err != nil {
 				if !errors.Is(err, http.ErrServerClosed) {
 					ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
 				}
@@ -155,17 +133,45 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		}()
 	}
 
+	hostListener := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
+
+	go func() {
+		defer cancel()
+
+		ts.logger.Infof("starting HostService gRPC server at %s", hostListener.Addr().String())
+
+		if err := hostServer.Serve(hostListener); err != nil {
+			if !errors.Is(err, grpc.ErrServerStopped) {
+				ts.logger.Warnf("HostService gRPC server failed: %v", err)
+			}
+		}
+	}()
+
+	defaultListener := mux.Match(cmux.Any())
+	go func() {
+		defer cancel()
+		if err := http.Serve(defaultListener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+		})); err != nil {
+			ts.logger.Warnf("Default server failed: %v", err)
+		}
+	}()
+
+	go func() {
+		defer cancel()
+
+		if err := mux.Serve(); err != nil {
+			ts.logger.Warnf("mux server failed: %v", err)
+		}
+	}()
+
 	<-subCtx.Done()
 
 	return nil
 }
 
-func (ts *TerminalServer) GuestServerAddress() string {
-	return ts.guestListener.Addr().String()
-}
-
-func (ts *TerminalServer) HostServerAddress() string {
-	return ts.hostListener.Addr().String()
+func (ts *TerminalServer) ServerAddress() string {
+	return ts.listener.Addr().String()
 }
 
 func (ts *TerminalServer) registerTerminal(terminal *terminal.Terminal) error {

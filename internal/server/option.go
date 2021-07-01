@@ -16,15 +16,9 @@ func WithLogger(logger *logrus.Logger) Option {
 	}
 }
 
-func WithGuestServerAddress(address string) Option {
+func WithServerAddress(address string) Option {
 	return func(ts *TerminalServer) {
-		ts.guestAddress = address
-	}
-}
-
-func WithHostServerAddress(address string) Option {
-	return func(ts *TerminalServer) {
-		ts.hostAddress = address
+		ts.address = address
 	}
 }
 
