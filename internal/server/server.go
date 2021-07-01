@@ -28,8 +28,6 @@ type TerminalServer struct {
 	address  string
 	listener net.Listener
 
-	guestUsesNoGRPCWebWrapping bool
-
 	api.UnimplementedGuestServiceServer
 	api.UnimplementedHostServiceServer
 
