@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	defaultServerAddress = "terminal.cirrus-ci.com"
+	defaultServerAddress = "https://terminal.cirrus-ci.com:443"
 )
 
 var (
