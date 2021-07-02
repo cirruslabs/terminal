@@ -1,6 +1,7 @@
 package server
 
 import (
+	"crypto/tls"
 	"github.com/sirupsen/logrus"
 	"net/http"
 )
@@ -31,5 +32,11 @@ func WithWebsocketOriginFunc(websocketOriginFunc WebsocketOriginFunc) Option {
 func WithLocatorGenerator(locatorGenerator LocatorGenerator) Option {
 	return func(ts *TerminalServer) {
 		ts.generateLocator = locatorGenerator
+	}
+}
+
+func WithTLSConfig(tlsConfig *tls.Config) Option {
+	return func(ts *TerminalServer) {
+		ts.tlsConfig = tlsConfig
 	}
 }

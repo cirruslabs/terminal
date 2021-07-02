@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"github.com/cirruslabs/terminal/internal/api"
@@ -25,8 +26,9 @@ type TerminalServer struct {
 	terminalsLock sync.RWMutex
 	terminals     map[string]*terminal.Terminal
 
-	address  string
-	listener net.Listener
+	address   string
+	listener  net.Listener
+	tlsConfig *tls.Config
 
 	api.UnimplementedGuestServiceServer
 	api.UnimplementedHostServiceServer
@@ -66,9 +68,16 @@ func New(opts ...Option) (*TerminalServer, error) {
 
 	var err error
 
-	ts.listener, err = net.Listen("tcp", ts.address)
-	if err != nil {
-		return nil, err
+	if ts.tlsConfig == nil {
+		ts.listener, err = net.Listen("tcp", ts.address)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		ts.listener, err = tls.Listen("tcp", ts.address, ts.tlsConfig)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return ts, nil
