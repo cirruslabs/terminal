@@ -68,16 +68,9 @@ func New(opts ...Option) (*TerminalServer, error) {
 
 	var err error
 
-	if ts.tlsConfig == nil {
-		ts.listener, err = net.Listen("tcp", ts.address)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		ts.listener, err = tls.Listen("tcp", ts.address, ts.tlsConfig)
-		if err != nil {
-			return nil, err
-		}
+	ts.listener, err = net.Listen("tcp", ts.address)
+	if err != nil {
+		return nil, err
 	}
 
 	return ts, nil
@@ -123,7 +116,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting GuestService gRPC-Web server at %s", webSocketListener.Addr().String())
 
-		if err := webSocketServer.Serve(webSocketListener); err != nil {
+		if err := webSocketServer.Serve(ts.configuredListener(webSocketListener)); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
 			}
@@ -137,19 +130,30 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting HostService gRPC server at %s", grpcListener.Addr().String())
 
-		if err := grpcServer.Serve(grpcListener); err != nil {
+		if err := grpcServer.Serve(ts.configuredListener(grpcListener)); err != nil {
 			if !errors.Is(err, grpc.ErrServerStopped) {
 				ts.logger.Warnf("HostService gRPC server failed: %v", err)
 			}
 		}
 	}()
 
-	defaultListener := mux.Match(cmux.Any())
+	defaultHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+	})
+
+	if ts.tlsConfig != nil {
+		tlsListener := tls.NewListener(mux.Match(cmux.TLS()), ts.tlsConfig)
+		go func() {
+			defer cancel()
+			if err := http.Serve(tlsListener, defaultHandler); err != nil {
+				ts.logger.Warnf("Default TLS server failed: %v", err)
+			}
+		}()
+	}
+
 	go func() {
 		defer cancel()
-		if err := http.Serve(defaultListener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
-		})); err != nil {
+		if err := http.Serve(mux.Match(cmux.Any()), defaultHandler); err != nil {
 			ts.logger.Warnf("Default server failed: %v", err)
 		}
 	}()
@@ -196,4 +200,12 @@ func (ts *TerminalServer) unregisterTerminal(terminal *terminal.Terminal) {
 	defer ts.terminalsLock.Unlock()
 
 	delete(ts.terminals, terminal.Locator())
+}
+
+func (ts *TerminalServer) configuredListener(listener net.Listener) net.Listener {
+	if ts.tlsConfig != nil {
+		return tls.NewListener(listener, ts.tlsConfig)
+	}
+	return listener
+
 }
