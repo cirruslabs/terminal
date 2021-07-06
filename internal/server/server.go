@@ -115,6 +115,11 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
 		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
 		cmux.HTTP1HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
+		cmux.HTTP2HeaderField("content-type", "application/grpc-web+proto"),
+		cmux.HTTP2HeaderField("content-type", "application/grpc-web+proto"),
+		cmux.HTTP2HeaderField("content-type", "application/grpc-web-text"),
+		cmux.HTTP2HeaderField("content-type", "application/grpc-web-text"),
+		cmux.HTTP2HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
 	)
 
 	go func() {
