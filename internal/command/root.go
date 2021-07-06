@@ -8,7 +8,10 @@ func NewRootCmd() *cobra.Command {
 		Short: "Cirrus Terminal",
 	}
 
-	cmd.AddCommand(newServeCmd())
+	cmd.AddCommand(
+		newServeCmd(),
+		newHostCmd(),
+	)
 
 	return cmd
 }

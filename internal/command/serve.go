@@ -22,7 +22,7 @@ var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 var allowedOrigins []string
 
-func serve(cmd *cobra.Command, args []string) error {
+func runServe(cmd *cobra.Command, args []string) error {
 	logLevel, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		return err
@@ -95,7 +95,7 @@ func newServeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "serve [flags]",
 		Short: "Run terminal server with guest (gRPC-Web over WebSocket) and host (gRPC) servers",
-		RunE:  serve,
+		RunE:  runServe,
 	}
 
 	var logLevelNames []string
