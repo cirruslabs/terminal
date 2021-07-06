@@ -101,6 +101,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			grpcweb.WithWebsockets(true),
 			grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
 		),
+		TLSConfig: ts.tlsConfig,
 	}
 	defer func() {
 		if localErr := webSocketServer.Shutdown(context.Background()); localErr != nil {
@@ -121,10 +122,14 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting GuestService gRPC-Web server at %s", webSocketListener.Addr().String())
 
-		if err := webSocketServer.Serve(webSocketListener); err != nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
-			}
+		var webSocketErr error
+		if webSocketServer.TLSConfig != nil {
+			webSocketErr = webSocketServer.ServeTLS(webSocketListener, "", "")
+		} else {
+			webSocketErr = webSocketServer.Serve(webSocketListener)
+		}
+		if webSocketErr != nil && !errors.Is(webSocketErr, http.ErrServerClosed) {
+			ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
 		}
 	}()
 
