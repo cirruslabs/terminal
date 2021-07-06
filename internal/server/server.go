@@ -12,7 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"io"
 	"net"
 	"net/http"
@@ -85,11 +84,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	mux := cmux.New(ts.listener)
 	defer mux.Close()
 
-	var grpcOptions []grpc.ServerOption
-	if ts.tlsConfig != nil {
-		grpcOptions = append(grpcOptions, grpc.Creds(credentials.NewTLS(ts.tlsConfig)))
-	}
-	grpcServer := grpc.NewServer(grpcOptions...)
+	grpcServer := grpc.NewServer()
 	defer grpcServer.GracefulStop()
 	api.RegisterHostServiceServer(grpcServer, ts)
 	api.RegisterGuestServiceServer(grpcServer, ts)
@@ -115,11 +110,6 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
 		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
 		cmux.HTTP1HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
-		cmux.HTTP2HeaderField("content-type", "application/grpc-web+proto"),
-		cmux.HTTP2HeaderField("content-type", "application/grpc-web+proto"),
-		cmux.HTTP2HeaderField("content-type", "application/grpc-web-text"),
-		cmux.HTTP2HeaderField("content-type", "application/grpc-web-text"),
-		cmux.HTTP2HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
 	)
 
 	go func() {
@@ -145,6 +135,10 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting HostService gRPC server at %s", grpcListener.Addr().String())
 
+		if ts.tlsConfig != nil {
+			grpcListener = tls.NewListener(grpcListener, ts.tlsConfig)
+		}
+
 		if err := grpcServer.Serve(grpcListener); err != nil {
 			if !errors.Is(err, grpc.ErrServerStopped) {
 				ts.logger.Warnf("HostService gRPC server failed: %v", err)
@@ -158,7 +152,10 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		defaultServer := &http.Server{
 			TLSConfig: ts.tlsConfig,
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+				fmt.Fprintln(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+				fmt.Fprintln(w, "\nCurrent request:")
+				fmt.Fprintln(w, r.Proto)
+				r.Write(w)
 			}),
 		}
 		var serveErr error
