@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/soheilhy/cmux"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"io"
 	"net"
 	"net/http"
@@ -84,7 +85,11 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	mux := cmux.New(ts.listener)
 	defer mux.Close()
 
-	grpcServer := grpc.NewServer()
+	var grpcOptions []grpc.ServerOption
+	if ts.tlsConfig != nil {
+		grpcOptions = append(grpcOptions, grpc.Creds(credentials.NewTLS(ts.tlsConfig)))
+	}
+	grpcServer := grpc.NewServer(grpcOptions...)
 	defer grpcServer.GracefulStop()
 	api.RegisterHostServiceServer(grpcServer, ts)
 	api.RegisterGuestServiceServer(grpcServer, ts)
@@ -116,7 +121,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting GuestService gRPC-Web server at %s", webSocketListener.Addr().String())
 
-		if err := webSocketServer.Serve(ts.configuredListener(webSocketListener)); err != nil {
+		if err := webSocketServer.Serve(webSocketListener); err != nil {
 			if !errors.Is(err, http.ErrServerClosed) {
 				ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
 			}
@@ -130,30 +135,29 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		ts.logger.Infof("starting HostService gRPC server at %s", grpcListener.Addr().String())
 
-		if err := grpcServer.Serve(ts.configuredListener(grpcListener)); err != nil {
+		if err := grpcServer.Serve(grpcListener); err != nil {
 			if !errors.Is(err, grpc.ErrServerStopped) {
 				ts.logger.Warnf("HostService gRPC server failed: %v", err)
 			}
 		}
 	}()
 
-	defaultHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
-	})
-
-	if ts.tlsConfig != nil {
-		tlsListener := tls.NewListener(mux.Match(cmux.TLS()), ts.tlsConfig)
-		go func() {
-			defer cancel()
-			if err := http.Serve(tlsListener, defaultHandler); err != nil {
-				ts.logger.Warnf("Default TLS server failed: %v", err)
-			}
-		}()
-	}
-
+	defaultListener := mux.Match(cmux.Any())
 	go func() {
 		defer cancel()
-		if err := http.Serve(mux.Match(cmux.Any()), defaultHandler); err != nil {
+		defaultServer := &http.Server{
+			TLSConfig: ts.tlsConfig,
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+			}),
+		}
+		var serveErr error
+		if defaultServer.TLSConfig != nil {
+			serveErr = defaultServer.ServeTLS(defaultListener, "", "")
+		} else {
+			serveErr = defaultServer.Serve(defaultListener)
+		}
+		if serveErr != nil {
 			ts.logger.Warnf("Default server failed: %v", err)
 		}
 	}()
@@ -200,12 +204,4 @@ func (ts *TerminalServer) unregisterTerminal(terminal *terminal.Terminal) {
 	defer ts.terminalsLock.Unlock()
 
 	delete(ts.terminals, terminal.Locator())
-}
-
-func (ts *TerminalServer) configuredListener(listener net.Listener) net.Listener {
-	if ts.tlsConfig != nil {
-		return tls.NewListener(listener, ts.tlsConfig)
-	}
-	return listener
-
 }
