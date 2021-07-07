@@ -100,11 +100,12 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		server := http.Server{
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				contentType := r.Header.Get("content-type")
-				if strings.HasPrefix(contentType, "application/grpc-web") {
+				switch {
+				case strings.HasPrefix(contentType, "application/grpc-web"):
 					grpcWebServer.ServeHTTP(w, r)
-				} else if strings.HasPrefix(contentType, "application/grpc") {
+				case strings.HasPrefix(contentType, "application/grpc"):
 					grpcServer.ServeHTTP(w, r)
-				} else {
+				default:
 					fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
 				}
 			}),
