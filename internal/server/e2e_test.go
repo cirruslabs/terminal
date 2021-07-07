@@ -8,12 +8,9 @@ import (
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/internal/server"
 	"github.com/cirruslabs/terminal/pkg/host"
-	"github.com/gorilla/websocket"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
-	"net/http"
 	"strings"
 	"testing"
 )
@@ -27,10 +24,6 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.TraceLevel)
 	serverOpts = append(serverOpts, server.WithLogger(logger))
-
-	serverOpts = append(serverOpts, server.WithWebsocketOriginFunc(func(request *http.Request) bool {
-		return true
-	}))
 
 	terminalServer, err := server.New(serverOpts...)
 	if err != nil {
@@ -173,64 +166,6 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 
 	assert.Equal(t, 0, terminalHost.NumSessions(), "terminal host should not run any sessions")
 
-	if err := <-terminalServerErrChan; err != nil && !errors.Is(err, context.Canceled) {
-		t.Fatal(err)
-	}
-}
-
-func TestWebsocketOriginChecking(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	// Initialize terminal server
-	serverOpts := []server.Option{
-		server.WithServerAddress("127.0.0.1:0"),
-	}
-
-	logger := logrus.New()
-	logger.SetLevel(logrus.TraceLevel)
-	serverOpts = append(serverOpts, server.WithLogger(logger))
-
-	const goodOrigin = "https://example.com"
-	serverOpts = append(serverOpts, server.WithWebsocketOriginFunc(func(request *http.Request) bool {
-		return request.Header.Get("Origin") == goodOrigin
-	}))
-
-	terminalServer, err := server.New(serverOpts...)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Run terminal server
-	terminalServerErrChan := make(chan error)
-	go func() {
-		terminalServerErrChan <- terminalServer.Run(ctx)
-	}()
-
-	// Craft WebSocket URL and headers that should be generally acceptable by our gRPC-Web instance,
-	// excluding the Origin header
-	webSocketURL := "ws://" + terminalServer.ServerAddress() + "/GuestService/TerminalChannel"
-	baseHeaders := http.Header{}
-	baseHeaders.Add("Sec-Websocket-Protocol", "grpc-websockets")
-
-	// Set an acceptable Origin header and ensure that the connection is upgraded
-	goodHeaders := baseHeaders.Clone()
-	goodHeaders.Add("Origin", goodOrigin)
-	goodHeaders.Add("Content-Type", "application/grpc-web-text")
-	_, resp, err := websocket.DefaultDialer.Dial(webSocketURL, goodHeaders)
-	require.NoError(t, err)
-	require.Equal(t, http.StatusSwitchingProtocols, resp.StatusCode)
-	_ = resp.Body.Close()
-
-	// Set an unacceptable Origin header and ensure the request is denied
-	badHeaders := baseHeaders.Clone()
-	badHeaders.Add("Origin", "https://bad.origin")
-	badHeaders.Add("Content-Type", "application/grpc-web-text")
-	_, resp, err = websocket.DefaultDialer.Dial(webSocketURL, badHeaders)
-	require.Equal(t, websocket.ErrBadHandshake, err)
-	require.Equal(t, http.StatusForbidden, resp.StatusCode)
-	_ = resp.Body.Close()
-
-	cancel()
 	if err := <-terminalServerErrChan; err != nil && !errors.Is(err, context.Canceled) {
 		t.Fatal(err)
 	}

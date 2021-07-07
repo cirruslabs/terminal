@@ -35,8 +35,7 @@ type TerminalServer struct {
 	api.UnimplementedGuestServiceServer
 	api.UnimplementedHostServiceServer
 
-	websocketOriginFunc WebsocketOriginFunc
-	generateLocator     LocatorGenerator
+	generateLocator LocatorGenerator
 }
 
 func New(opts ...Option) (*TerminalServer, error) {
@@ -53,11 +52,6 @@ func New(opts ...Option) (*TerminalServer, error) {
 	if ts.logger == nil {
 		ts.logger = logrus.New()
 		ts.logger.Out = io.Discard
-	}
-	if ts.websocketOriginFunc == nil {
-		ts.websocketOriginFunc = func(*http.Request) bool {
-			return false
-		}
 	}
 	if ts.generateLocator == nil {
 		ts.generateLocator = func() string {
@@ -91,7 +85,9 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	grpcWebServer := grpcweb.WrapServer(
 		grpcServer,
 		grpcweb.WithWebsockets(true),
-		grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
+		grpcweb.WithWebsocketOriginFunc(func(request *http.Request) bool {
+			return true
+		}),
 	)
 
 	go func() {
