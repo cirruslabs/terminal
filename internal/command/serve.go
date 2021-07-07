@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"math/big"
-	"net/http"
 	"os"
 	"strings"
 )
@@ -20,7 +19,6 @@ var logLevel string
 var serverAddress string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
-var allowedOrigins []string
 
 func runServe(cmd *cobra.Command, args []string) error {
 	logLevel, err := logrus.ParseLevel(logLevel)
@@ -68,20 +66,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	websocketOriginFunc := func(request *http.Request) bool {
-		for _, allowedOrigin := range allowedOrigins {
-			if request.Header.Get("Origin") == allowedOrigin {
-				return true
-			}
-		}
-
-		return false
-	}
-
 	terminalServer, err := server.New(
 		server.WithLogger(logger),
 		server.WithServerAddress(serverAddress),
-		server.WithWebsocketOriginFunc(websocketOriginFunc),
 		server.WithTLSConfig(tlsConfig),
 	)
 	if err != nil {
@@ -119,9 +106,6 @@ func newServeCmd() *cobra.Command {
 		"enable TLS and use the specified certificate file (must also specify --tls-key-file)")
 	cmd.PersistentFlags().StringVar(&tlsKeyFile, "tls-key-file", "",
 		"enable TLS and use the specified key file (must also specify --tls-cert-file)")
-
-	cmd.PersistentFlags().StringSliceVar(&allowedOrigins, "allowed-origins", []string{},
-		"a list comma-separated origins that are allowed to talk with the guest's gRPC-Web WebSocket server")
 
 	return cmd
 }
