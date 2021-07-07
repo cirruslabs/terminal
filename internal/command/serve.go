@@ -40,7 +40,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 		tlsConfig = &tls.Config{
 			Certificates: []tls.Certificate{certificate},
-			MinVersion:   tls.VersionTLS12,
 		}
 	} else if tlsEphemeral {
 		privateKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -64,7 +63,6 @@ func runServe(cmd *cobra.Command, args []string) error {
 					PrivateKey:  privateKey,
 				},
 			},
-			MinVersion: tls.VersionTLS12,
 		}
 	}
 
