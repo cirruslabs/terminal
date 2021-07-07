@@ -101,6 +101,8 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				contentType := r.Header.Get("content-type")
 				switch {
+				case grpcWebServer.IsGrpcWebSocketRequest(r):
+					grpcWebServer.ServeHTTP(w, r)
 				case strings.HasPrefix(contentType, "application/grpc-web"):
 					grpcWebServer.ServeHTTP(w, r)
 				case strings.HasPrefix(contentType, "application/grpc"):
