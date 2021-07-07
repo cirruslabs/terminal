@@ -10,11 +10,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/sirupsen/logrus"
-	"github.com/soheilhy/cmux"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"sync"
 )
 
@@ -68,16 +70,9 @@ func New(opts ...Option) (*TerminalServer, error) {
 
 	var err error
 
-	if ts.tlsConfig == nil {
-		ts.listener, err = net.Listen("tcp", ts.address)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		ts.listener, err = tls.Listen("tcp", ts.address, ts.tlsConfig)
-		if err != nil {
-			return nil, err
-		}
+	ts.listener, err = net.Listen("tcp", ts.address)
+	if err != nil {
+		return nil, err
 	}
 
 	return ts, nil
@@ -88,76 +83,48 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	mux := cmux.New(ts.listener)
-	defer mux.Close()
-
 	grpcServer := grpc.NewServer()
-	defer grpcServer.GracefulStop()
+	defer grpcServer.Stop()
 	api.RegisterHostServiceServer(grpcServer, ts)
 	api.RegisterGuestServiceServer(grpcServer, ts)
 
-	// Since we use gRPC-Web with Websockets transport, we need additional wrapping
-	webSocketServer := http.Server{
-		Handler: grpcweb.WrapServer(
-			grpcServer,
-			grpcweb.WithWebsockets(true),
-			grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
-		),
-	}
-	defer func() {
-		if localErr := webSocketServer.Shutdown(context.Background()); localErr != nil {
-			err = localErr
-		}
-	}()
-
-	webSocketListener := mux.Match(
-		cmux.HTTP1HeaderField("content-type", "application/grpc-web+proto"),
-		cmux.HTTP1HeaderField("content-type", "application/grpc-web+proto"),
-		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
-		cmux.HTTP1HeaderField("content-type", "application/grpc-web-text"),
-		cmux.HTTP1HeaderField("Sec-WebSocket-Protocol", "grpc-websockets"),
+	grpcWebServer := grpcweb.WrapServer(
+		grpcServer,
+		grpcweb.WithWebsockets(true),
+		grpcweb.WithWebsocketOriginFunc(ts.websocketOriginFunc),
 	)
 
 	go func() {
 		defer cancel()
 
-		ts.logger.Infof("starting GuestService gRPC-Web server at %s", webSocketListener.Addr().String())
-
-		if err := webSocketServer.Serve(webSocketListener); err != nil {
-			if !errors.Is(err, http.ErrServerClosed) {
-				ts.logger.Warnf("GuestService gRPC-Web server failed: %v", err)
-			}
+		server := http.Server{
+			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				contentType := r.Header.Get("content-type")
+				switch {
+				case grpcWebServer.IsGrpcWebSocketRequest(r):
+					grpcWebServer.ServeHTTP(w, r)
+				case strings.HasPrefix(contentType, "application/grpc-web"):
+					grpcWebServer.ServeHTTP(w, r)
+				case strings.HasPrefix(contentType, "application/grpc"):
+					grpcServer.ServeHTTP(w, r)
+				default:
+					fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+				}
+			}),
+			TLSConfig: ts.tlsConfig,
 		}
-	}()
 
-	grpcListener := mux.MatchWithWriters(cmux.HTTP2MatchHeaderFieldSendSettings("content-type", "application/grpc"))
-
-	go func() {
-		defer cancel()
-
-		ts.logger.Infof("starting HostService gRPC server at %s", grpcListener.Addr().String())
-
-		if err := grpcServer.Serve(grpcListener); err != nil {
-			if !errors.Is(err, grpc.ErrServerStopped) {
-				ts.logger.Warnf("HostService gRPC server failed: %v", err)
-			}
+		var serveErr error
+		if server.TLSConfig != nil {
+			serveErr = server.ServeTLS(ts.listener, "", "")
+		} else {
+			// enable HTTP/2 without TLS aka h2c
+			h2s := &http2.Server{}
+			server.Handler = h2c.NewHandler(server.Handler, h2s)
+			serveErr = server.Serve(ts.listener)
 		}
-	}()
 
-	defaultListener := mux.Match(cmux.Any())
-	go func() {
-		defer cancel()
-		if err := http.Serve(defaultListener, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
-		})); err != nil {
-			ts.logger.Warnf("Default server failed: %v", err)
-		}
-	}()
-
-	go func() {
-		defer cancel()
-
-		if err := mux.Serve(); err != nil {
+		if serveErr != nil {
 			ts.logger.Warnf("mux server failed: %v", err)
 		}
 	}()

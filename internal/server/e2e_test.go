@@ -40,7 +40,8 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// Run terminal server
 	terminalServerErrChan := make(chan error)
 	go func() {
-		terminalServerErrChan <- terminalServer.Run(ctx)
+		serverError := terminalServer.Run(ctx)
+		terminalServerErrChan <- serverError
 	}()
 
 	// Initialize terminal host
@@ -70,7 +71,12 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	}()
 
 	// Collect the locator assigned to the host
-	locator := <-locatorChan
+	var locator string
+	select {
+	case locator = <-locatorChan:
+	case err := <-terminalHostErrChan:
+		t.Fatal(err)
+	}
 
 	// Emulate guest: open up a terminal channel, just like a web UI would do
 	clientConn, err := grpc.Dial(terminalServer.ServerAddress(), grpc.WithInsecure())

@@ -9,9 +9,9 @@ require (
 	github.com/gorilla/websocket v1.4.2
 	github.com/improbable-eng/grpc-web v0.14.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/soheilhy/cmux v0.1.5
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
+	golang.org/x/net v0.0.0-20210614182718-04defd469f4e
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.26.0
 )
