@@ -17,7 +17,7 @@ import (
 
 func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	serverAddress := "localhost:11111"
+	serverAddress := ":11111"
 
 	// Initialize terminal server
 	var serverOpts []server.Option
