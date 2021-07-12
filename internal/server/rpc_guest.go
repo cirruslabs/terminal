@@ -19,6 +19,8 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 		return status.Errorf(codes.FailedPrecondition, "expected a Hello message")
 	}
 
+	ts.logger.Infof("Got hello from %s", helloFromGuest.Locator)
+
 	// Find a terminal with the requested locator
 	terminal := ts.findTerminal(helloFromGuest.Locator)
 	if terminal == nil {
