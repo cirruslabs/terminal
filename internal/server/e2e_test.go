@@ -17,6 +17,7 @@ import (
 
 func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
+	serverAddress := ":11111"
 
 	// Initialize terminal server
 	var serverOpts []server.Option
@@ -24,6 +25,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.TraceLevel)
 	serverOpts = append(serverOpts, server.WithLogger(logger))
+	serverOpts = append(serverOpts, server.WithAddresses([]string{serverAddress}))
 
 	terminalServer, err := server.New(serverOpts...)
 	if err != nil {
@@ -40,7 +42,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// Initialize terminal host
 	hostOpts := []host.Option{
 		host.WithLogger(logger),
-		host.WithServerAddress("http://" + terminalServer.ServerAddress()),
+		host.WithServerAddress("http://" + serverAddress),
 	}
 
 	const secret = "fixed secret used in tests"
@@ -72,7 +74,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	}
 
 	// Emulate guest: open up a terminal channel, just like a web UI would do
-	clientConn, err := grpc.Dial(terminalServer.ServerAddress(), grpc.WithInsecure())
+	clientConn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
 	if err != nil {
 		t.Fatal(err)
 	}

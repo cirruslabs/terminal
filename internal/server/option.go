@@ -15,9 +15,9 @@ func WithLogger(logger *logrus.Logger) Option {
 	}
 }
 
-func WithServerAddress(address string) Option {
+func WithAddresses(addresses []string) Option {
 	return func(ts *TerminalServer) {
-		ts.address = address
+		ts.addresses = addresses
 	}
 }
 

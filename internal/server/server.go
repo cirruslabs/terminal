@@ -8,6 +8,7 @@ import (
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/internal/server/terminal"
 	"github.com/google/uuid"
+	"github.com/gorilla/handlers"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/http2"
@@ -28,8 +29,7 @@ type TerminalServer struct {
 	terminalsLock sync.RWMutex
 	terminals     map[string]*terminal.Terminal
 
-	address   string
-	listener  net.Listener
+	addresses []string
 	tlsConfig *tls.Config
 
 	api.UnimplementedGuestServiceServer
@@ -58,15 +58,8 @@ func New(opts ...Option) (*TerminalServer, error) {
 			return uuid.New().String()
 		}
 	}
-	if ts.address == "" {
-		ts.address = "0.0.0.0:0"
-	}
-
-	var err error
-
-	ts.listener, err = net.Listen("tcp", ts.address)
-	if err != nil {
-		return nil, err
+	if len(ts.addresses) == 0 {
+		ts.addresses = []string{"0.0.0.0:0"}
 	}
 
 	return ts, nil
@@ -90,48 +83,70 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		}),
 	)
 
-	go func() {
-		defer cancel()
+	grpcHandler := func(w http.ResponseWriter, r *http.Request) {
+		contentType := r.Header.Get("content-type")
+		switch {
+		case strings.ToLower(r.Header.Get("Sec-Websocket-Protocol")) == "grpc-websockets":
+			grpcWebServer.ServeHTTP(w, r)
+		case strings.HasPrefix(contentType, "application/grpc-web"):
+			grpcWebServer.ServeHTTP(w, r)
+		case strings.HasPrefix(contentType, "application/grpc"):
+			grpcServer.ServeHTTP(w, r)
+		default:
+			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
+		}
+	}
+	handlerWithLogging := handlers.CustomLoggingHandler(
+		ts.logger.Writer(),
+		http.HandlerFunc(grpcHandler),
+		func(w io.Writer, p handlers.LogFormatterParams) {
+			req := p.Request
+
+			uri := req.RequestURI
+			if uri == "" {
+				uri = p.URL.RequestURI()
+			}
+
+			_, _ = fmt.Fprintln(w, req.Method, uri, req.Proto, p.StatusCode, p.Size)
+		},
+	)
+
+	startServer := func(address string) error {
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			return err
+		}
 
 		server := http.Server{
-			Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				contentType := r.Header.Get("content-type")
-				switch {
-				case strings.ToLower(r.Header.Get("Sec-Websocket-Protocol")) == "grpc-websockets":
-					grpcWebServer.ServeHTTP(w, r)
-				case strings.HasPrefix(contentType, "application/grpc-web"):
-					grpcWebServer.ServeHTTP(w, r)
-				case strings.HasPrefix(contentType, "application/grpc"):
-					grpcServer.ServeHTTP(w, r)
-				default:
-					fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
-				}
-			}),
+			Handler:   handlerWithLogging,
 			TLSConfig: ts.tlsConfig,
 		}
 
-		var serveErr error
-		if server.TLSConfig != nil {
-			serveErr = server.ServeTLS(ts.listener, "", "")
-		} else {
-			// enable HTTP/2 without TLS aka h2c
-			h2s := &http2.Server{}
-			server.Handler = h2c.NewHandler(server.Handler, h2s)
-			serveErr = server.Serve(ts.listener)
-		}
+		ts.logger.Infof("Starting server on %s...", listener.Addr().String())
 
-		if serveErr != nil {
-			ts.logger.Warnf("mux server failed: %v", err)
+		if server.TLSConfig != nil {
+			return server.ServeTLS(listener, "", "")
 		}
-	}()
+		// enable HTTP/2 without TLS aka h2c
+		h2s := &http2.Server{}
+		server.Handler = h2c.NewHandler(server.Handler, h2s)
+		return server.Serve(listener)
+	}
+
+	for _, address := range ts.addresses {
+		address := address
+		go func() {
+			defer cancel()
+
+			if serverErr := startServer(address); serverErr != nil {
+				ts.logger.Warnf("server failed to start on %s: %v", address, err)
+			}
+		}()
+	}
 
 	<-subCtx.Done()
 
 	return nil
-}
-
-func (ts *TerminalServer) ServerAddress() string {
-	return ts.listener.Addr().String()
 }
 
 func (ts *TerminalServer) registerTerminal(terminal *terminal.Terminal) error {

@@ -16,7 +16,7 @@ import (
 )
 
 var logLevel string
-var serverAddress string
+var serverAddresses []string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 
@@ -27,6 +27,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 	}
 	logger := logrus.New()
 	logger.SetLevel(logLevel)
+	logger.SetFormatter(&logrus.TextFormatter{
+		DisableTimestamp: true,
+	})
 
 	var tlsConfig *tls.Config
 
@@ -68,7 +71,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 
 	terminalServer, err := server.New(
 		server.WithLogger(logger),
-		server.WithServerAddress(serverAddress),
+		server.WithAddresses(serverAddresses),
 		server.WithTLSConfig(tlsConfig),
 	)
 	if err != nil {
@@ -92,13 +95,14 @@ func newServeCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
 		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
 
+	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	cmd.PersistentFlags().StringVarP(&serverAddress, "listen", "l", fmt.Sprintf(":%s", port),
-		"address to listen on")
+	cmd.PersistentFlags().StringSliceVarP(&serverAddresses, "listen", "l", []string{fmt.Sprintf(":%s", port)},
+		"addresses to listen on")
 
 	cmd.PersistentFlags().BoolVar(&tlsEphemeral, "tls-ephemeral", false,
 		"enable TLS and generate a self-signed and ephemeral certificate and key")
