@@ -83,7 +83,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		}),
 	)
 
-	commonHandler := handlers.CustomLoggingHandler(ts.logger.Writer(), http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	grpcHandler := func(w http.ResponseWriter, r *http.Request) {
 		contentType := r.Header.Get("content-type")
 		switch {
 		case strings.ToLower(r.Header.Get("Sec-Websocket-Protocol")) == "grpc-websockets":
@@ -95,16 +95,21 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		default:
 			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
 		}
-	}), func(w io.Writer, p handlers.LogFormatterParams) {
-		req := p.Request
+	}
+	handlerWithLogging := handlers.CustomLoggingHandler(
+		ts.logger.Writer(),
+		http.HandlerFunc(grpcHandler),
+		func(w io.Writer, p handlers.LogFormatterParams) {
+			req := p.Request
 
-		uri := req.RequestURI
-		if uri == "" {
-			uri = p.URL.RequestURI()
-		}
+			uri := req.RequestURI
+			if uri == "" {
+				uri = p.URL.RequestURI()
+			}
 
-		_, _ = fmt.Fprintln(w, req.Method, uri, req.Proto, p.StatusCode, p.Size)
-	})
+			_, _ = fmt.Fprintln(w, req.Method, uri, req.Proto, p.StatusCode, p.Size)
+		},
+	)
 
 	startServer := func(address string) error {
 		listener, err := net.Listen("tcp", address)
@@ -113,7 +118,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		}
 
 		server := http.Server{
-			Handler:   commonHandler,
+			Handler:   handlerWithLogging,
 			TLSConfig: ts.tlsConfig,
 		}
 
@@ -121,12 +126,11 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 		if server.TLSConfig != nil {
 			return server.ServeTLS(listener, "", "")
-		} else {
-			// enable HTTP/2 without TLS aka h2c
-			h2s := &http2.Server{}
-			server.Handler = h2c.NewHandler(server.Handler, h2s)
-			return server.Serve(listener)
 		}
+		// enable HTTP/2 without TLS aka h2c
+		h2s := &http2.Server{}
+		server.Handler = h2c.NewHandler(server.Handler, h2s)
+		return server.Serve(listener)
 	}
 
 	for _, address := range ts.addresses {

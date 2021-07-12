@@ -95,6 +95,7 @@ func newServeCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
 		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
 
+	//nolint:ifshort
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
