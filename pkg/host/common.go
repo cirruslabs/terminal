@@ -16,7 +16,8 @@ type TerminalHost struct {
 
 	locatorCallback LocatorCallback
 
-	sessionsLock sync.Mutex
-	sessions     map[string]*session.Session
-	lastActivity time.Time
+	sessionsLock     sync.Mutex
+	sessions         map[string]*session.Session
+	lastRegistration time.Time
+	lastActivity     time.Time
 }

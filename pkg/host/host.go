@@ -131,6 +131,13 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	}
 }
 
+func (th *TerminalHost) LastRegistration() time.Time {
+	th.sessionsLock.Lock()
+	defer th.sessionsLock.Unlock()
+
+	return th.lastRegistration
+}
+
 func (th *TerminalHost) LastActivity() time.Time {
 	th.sessionsLock.Lock()
 	defer th.sessionsLock.Unlock()
@@ -179,6 +186,11 @@ func (th *TerminalHost) NumSessionsFunc(f func(session *session.Session) bool) i
 func (th *TerminalHost) registerSession(session *session.Session) {
 	th.sessionsLock.Lock()
 	defer th.sessionsLock.Unlock()
+
+	now := time.Now()
+	if now.After(th.lastRegistration) {
+		th.lastRegistration = now
+	}
 
 	th.sessions[session.Token()] = session
 }
