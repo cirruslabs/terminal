@@ -4,6 +4,7 @@ import (
 	"github.com/cirruslabs/terminal/pkg/host/session"
 	"github.com/sirupsen/logrus"
 	"sync"
+	"time"
 )
 
 type TerminalHost struct {
@@ -17,4 +18,5 @@ type TerminalHost struct {
 
 	sessionsLock sync.Mutex
 	sessions     map[string]*session.Session
+	lastActivity time.Time
 }
