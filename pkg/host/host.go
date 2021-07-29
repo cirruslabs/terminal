@@ -131,6 +131,13 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	}
 }
 
+func (th *TerminalHost) LastRegistration() time.Time {
+	th.sessionsLock.Lock()
+	defer th.sessionsLock.Unlock()
+
+	return th.lastRegistration
+}
+
 func (th *TerminalHost) LastActivity() time.Time {
 	th.sessionsLock.Lock()
 	defer th.sessionsLock.Unlock()
@@ -142,6 +149,13 @@ func (th *TerminalHost) LastActivity() time.Time {
 		if sessionLastActivity.After(result) {
 			result = sessionLastActivity
 		}
+	}
+
+	// Perhaps there was an intermittent session that was just closed
+	// but generated an activity that is way more recent than any of
+	// the active sessions
+	if th.lastActivity.After(result) {
+		return th.lastActivity
 	}
 
 	return result
@@ -173,12 +187,23 @@ func (th *TerminalHost) registerSession(session *session.Session) {
 	th.sessionsLock.Lock()
 	defer th.sessionsLock.Unlock()
 
+	now := time.Now()
+	if now.After(th.lastRegistration) {
+		th.lastRegistration = now
+	}
+
 	th.sessions[session.Token()] = session
 }
 
 func (th *TerminalHost) unregisterSession(session *session.Session) {
 	th.sessionsLock.Lock()
 	defer th.sessionsLock.Unlock()
+
+	// Keep track of last activity time for intermittent sessions
+	lastActivity := session.LastActivity()
+	if lastActivity.After(th.lastActivity) {
+		th.lastActivity = lastActivity
+	}
 
 	delete(th.sessions, session.Token())
 }
