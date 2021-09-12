@@ -72,6 +72,9 @@ func (session *Session) Run(
 	shellPath := determineShellPath()
 	shellCmd := exec.Command(shellPath)
 
+	// Avoid "Error opening terminal: unknown." error
+	shellCmd.Env = []string{"TERM=xterm"}
+
 	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dimensions))
 	if err != nil {
 		session.logger.Warnf("failed to create PTY: %v", err)
