@@ -55,21 +55,51 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 	const numGoroutines = 2
 	errChan := make(chan error, numGoroutines)
 
-	// Process terminal output from the Host
-	go func() {
-		for {
-			select {
-			case chunk := <-session.TerminalOutputChan:
-				if err := channel.Send(&api.GuestTerminalResponse{
-					Operation: &api.GuestTerminalResponse_Output{
-						Output: &api.Data{
-							Data: chunk,
-						},
+	go fromHost(session, channel, errChan)
+	go fromGuest(session, channel, errChan)
+
+	return <-errChan
+}
+
+// fromHost processes terminal output from the Host.
+func fromHost(session *session.Session, channel api.GuestService_TerminalChannelServer, errChan chan error) {
+	for {
+		select {
+		case chunk := <-session.TerminalOutputChan:
+			if err := channel.Send(&api.GuestTerminalResponse{
+				Operation: &api.GuestTerminalResponse_Output{
+					Output: &api.Data{
+						Data: chunk,
 					},
-				}); err != nil {
-					errChan <- err
-					return
-				}
+				},
+			}); err != nil {
+				errChan <- err
+				return
+			}
+		case <-channel.Context().Done():
+			errChan <- nil
+			return
+		case <-session.Context().Done():
+			errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
+			return
+		}
+	}
+}
+
+// fromGuest processes terminal input and other commands from the Guest.
+func fromGuest(session *session.Session, channel api.GuestService_TerminalChannelServer, errChan chan error) {
+	for {
+		requestFromGuest, err := channel.Recv()
+		if err != nil {
+			errChan <- err
+			return
+		}
+
+		switch msg := requestFromGuest.Operation.(type) {
+		case *api.GuestTerminalRequest_ChangeDimensions:
+			select {
+			case session.ChangeDimensionsChan <- msg.ChangeDimensions:
+				continue
 			case <-channel.Context().Done():
 				errChan <- nil
 				return
@@ -77,47 +107,20 @@ func (ts *TerminalServer) TerminalChannel(channel api.GuestService_TerminalChann
 				errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
 				return
 			}
-		}
-	}()
-
-	go func() {
-		// Process terminal input and other commands from the Guest
-		for {
-			requestFromGuest, err = channel.Recv()
-			if err != nil {
-				errChan <- err
+		case *api.GuestTerminalRequest_Input:
+			select {
+			case session.TerminalInputChan <- msg.Input.Data:
+				continue
+			case <-channel.Context().Done():
+				errChan <- nil
+				return
+			case <-session.Context().Done():
+				errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
 				return
 			}
-
-			switch msg := requestFromGuest.Operation.(type) {
-			case *api.GuestTerminalRequest_ChangeDimensions:
-				select {
-				case session.ChangeDimensionsChan <- msg.ChangeDimensions:
-					continue
-				case <-channel.Context().Done():
-					errChan <- nil
-					return
-				case <-session.Context().Done():
-					errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
-					return
-				}
-			case *api.GuestTerminalRequest_Input:
-				select {
-				case session.TerminalInputChan <- msg.Input.Data:
-					continue
-				case <-channel.Context().Done():
-					errChan <- nil
-					return
-				case <-session.Context().Done():
-					errChan <- status.Errorf(codes.Aborted, "lost connection with the terminal host")
-					return
-				}
-			default:
-				errChan <- status.Errorf(codes.FailedPrecondition, "expected a TerminalDimensions or a Data message")
-				return
-			}
+		default:
+			errChan <- status.Errorf(codes.FailedPrecondition, "expected a TerminalDimensions or a Data message")
+			return
 		}
-	}()
-
-	return <-errChan
+	}
 }

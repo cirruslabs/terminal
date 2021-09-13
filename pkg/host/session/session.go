@@ -1,3 +1,4 @@
+//go:build !windows
 // +build !windows
 
 package session
@@ -71,6 +72,9 @@ func (session *Session) Run(
 	// Create a PTY with a shell attached to it
 	shellPath := determineShellPath()
 	shellCmd := exec.Command(shellPath)
+
+	// Avoid "Error opening terminal: unknown." error
+	shellCmd.Env = []string{"TERM=xterm"}
 
 	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dimensions))
 	if err != nil {
