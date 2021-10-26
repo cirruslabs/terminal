@@ -30,6 +30,7 @@ type TerminalServer struct {
 	terminals     map[string]*terminal.Terminal
 
 	addresses []string
+	listeners []net.Listener
 	tlsConfig *tls.Config
 
 	api.UnimplementedGuestServiceServer
@@ -60,6 +61,16 @@ func New(opts ...Option) (*TerminalServer, error) {
 	}
 	if len(ts.addresses) == 0 {
 		ts.addresses = []string{"0.0.0.0:0"}
+	}
+
+	// Listen
+	for _, address := range ts.addresses {
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			return nil, err
+		}
+
+		ts.listeners = append(ts.listeners, listener)
 	}
 
 	return ts, nil
@@ -111,12 +122,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		},
 	)
 
-	startServer := func(address string) error {
-		listener, err := net.Listen("tcp", address)
-		if err != nil {
-			return err
-		}
-
+	startServer := func(listener net.Listener) error {
 		server := http.Server{
 			Handler:   handlerWithLogging,
 			TLSConfig: ts.tlsConfig,
@@ -133,13 +139,13 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		return server.Serve(listener)
 	}
 
-	for _, address := range ts.addresses {
-		address := address
+	for _, listener := range ts.listeners {
+		listener := listener
 		go func() {
 			defer cancel()
 
-			if serverErr := startServer(address); serverErr != nil {
-				ts.logger.Warnf("server failed to start on %s: %v", address, err)
+			if serverErr := startServer(listener); serverErr != nil {
+				ts.logger.Warnf("server failed to start on %s: %v", listener.Addr().String(), err)
 			}
 		}()
 	}
@@ -147,6 +153,16 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	<-subCtx.Done()
 
 	return nil
+}
+
+func (ts *TerminalServer) Addresses() []string {
+	var result []string
+
+	for _, listener := range ts.listeners {
+		result = append(result, listener.Addr().String())
+	}
+
+	return result
 }
 
 func (ts *TerminalServer) registerTerminal(terminal *terminal.Terminal) error {
