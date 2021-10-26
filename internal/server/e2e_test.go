@@ -17,7 +17,6 @@ import (
 
 func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
-	serverAddress := ":11111"
 
 	// Initialize terminal server
 	var serverOpts []server.Option
@@ -25,7 +24,6 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	logger := logrus.New()
 	logger.SetLevel(logrus.TraceLevel)
 	serverOpts = append(serverOpts, server.WithLogger(logger))
-	serverOpts = append(serverOpts, server.WithAddresses([]string{serverAddress}))
 
 	terminalServer, err := server.New(serverOpts...)
 	if err != nil {
@@ -38,6 +36,8 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 		serverError := terminalServer.Run(ctx)
 		terminalServerErrChan <- serverError
 	}()
+
+	serverAddress := terminalServer.Addresses()[0]
 
 	// Initialize terminal host
 	hostOpts := []host.Option{
