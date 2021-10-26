@@ -109,8 +109,8 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 			// because context.Cancelled would be more
 			// appropriate, e.g. to check for the exact
 			// error in tests
-			case <-controlChannel.Context().Done():
-				return controlChannel.Context().Err()
+			case <-ctx.Done():
+				return ctx.Err()
 			default:
 				return err
 			}
