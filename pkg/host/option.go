@@ -1,12 +1,14 @@
 package host
 
-import "github.com/sirupsen/logrus"
+import (
+	"go.uber.org/zap"
+)
 
 type Option func(*TerminalHost)
 
 type LocatorCallback func(string) error
 
-func WithLogger(logger *logrus.Logger) Option {
+func WithLogger(logger *zap.Logger) Option {
 	return func(th *TerminalHost) {
 		th.logger = logger
 	}

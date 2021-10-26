@@ -2,14 +2,14 @@ package server
 
 import (
 	"crypto/tls"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 type Option func(*TerminalServer)
 
 type LocatorGenerator func() string
 
-func WithLogger(logger *logrus.Logger) Option {
+func WithLogger(logger *zap.Logger) Option {
 	return func(ts *TerminalServer) {
 		ts.logger = logger
 	}

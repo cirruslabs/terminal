@@ -2,13 +2,13 @@ package host
 
 import (
 	"github.com/cirruslabs/terminal/pkg/host/session"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"sync"
 	"time"
 )
 
 type TerminalHost struct {
-	logger *logrus.Logger
+	logger *zap.Logger
 
 	serverAddress string
 

@@ -1,29 +1,28 @@
 package command
 
 import (
-	"fmt"
 	"github.com/cirruslabs/terminal/pkg/host"
 	"github.com/google/uuid"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"strings"
 )
 
-var hostLogLevel string
 var hostServerAddress string
 var hostTrustedSecret string
 
-func runHost(cmd *cobra.Command, args []string) error {
-	logLevel, err := logrus.ParseLevel(logLevel)
+func runHost(cmd *cobra.Command, args []string) (err error) {
+	logger, err := getLogger()
 	if err != nil {
 		return err
 	}
-	logger := logrus.New()
-	logger.SetLevel(logLevel)
+	defer func() {
+		if syncErr := logger.Sync(); syncErr != nil {
+			err = syncErr
+		}
+	}()
 
 	if hostTrustedSecret == "" {
 		hostTrustedSecret = uuid.New().String()
-		logger.Infof("genereated trusted secret: %s", hostTrustedSecret)
+		logger.Sugar().Infof("genereated trusted secret: %s", hostTrustedSecret)
 	}
 
 	terminalHost, err := host.New(
@@ -31,7 +30,7 @@ func runHost(cmd *cobra.Command, args []string) error {
 		host.WithServerAddress(hostServerAddress),
 		host.WithTrustedSecret(hostTrustedSecret),
 		host.WithLocatorCallback(func(locator string) error {
-			logger.Infof("received locator: %s", locator)
+			logger.Sugar().Infof("received locator: %s", locator)
 			return nil
 		}),
 	)
@@ -49,12 +48,7 @@ func newHostCmd() *cobra.Command {
 		RunE:  runHost,
 	}
 
-	var logLevelNames []string
-	for _, level := range logrus.AllLevels {
-		logLevelNames = append(logLevelNames, level.String())
-	}
-	cmd.PersistentFlags().StringVar(&hostLogLevel, "log-level", "info",
-		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
+	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
 
 	cmd.PersistentFlags().StringVar(&hostServerAddress, "server-address", "https://terminal.cirrus-ci.com:443",
 		"terminal server address")

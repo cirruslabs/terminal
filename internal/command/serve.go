@@ -8,28 +8,35 @@ import (
 	"crypto/x509"
 	"fmt"
 	"github.com/cirruslabs/terminal/internal/server"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"math/big"
 	"os"
-	"strings"
 )
 
-var logLevel string
+var debug bool
 var serverAddresses []string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 
-func runServe(cmd *cobra.Command, args []string) error {
-	logLevel, err := logrus.ParseLevel(logLevel)
+func getLogger() (*zap.Logger, error) {
+	if debug {
+		return zap.NewDevelopment()
+	}
+
+	return zap.NewProduction()
+}
+
+func runServe(cmd *cobra.Command, args []string) (err error) {
+	logger, err := getLogger()
 	if err != nil {
 		return err
 	}
-	logger := logrus.New()
-	logger.SetLevel(logLevel)
-	logger.SetFormatter(&logrus.TextFormatter{
-		DisableTimestamp: true,
-	})
+	defer func() {
+		if syncErr := logger.Sync(); syncErr != nil {
+			err = syncErr
+		}
+	}()
 
 	var tlsConfig *tls.Config
 
@@ -88,12 +95,7 @@ func newServeCmd() *cobra.Command {
 		RunE:  runServe,
 	}
 
-	var logLevelNames []string
-	for _, level := range logrus.AllLevels {
-		logLevelNames = append(logLevelNames, level.String())
-	}
-	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
-		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
+	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
 
 	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")

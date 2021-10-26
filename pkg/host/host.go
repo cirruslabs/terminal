@@ -10,9 +10,8 @@ import (
 	"github.com/cirruslabs/cirrus-ci-agent/pkg/grpchelper"
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/pkg/host/session"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"io"
 	"sync"
 	"time"
 )
@@ -38,8 +37,7 @@ func New(opts ...Option) (*TerminalHost, error) {
 
 	// Apply defaults
 	if client.logger == nil {
-		client.logger = logrus.New()
-		client.logger.Out = io.Discard
+		client.logger = zap.NewNop()
 	}
 	if client.serverAddress == "" {
 		client.serverAddress = defaultServerAddress

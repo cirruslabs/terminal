@@ -8,8 +8,8 @@ import (
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/internal/server"
 	"github.com/cirruslabs/terminal/pkg/host"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"strings"
 	"testing"
@@ -21,8 +21,13 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	// Initialize terminal server
 	var serverOpts []server.Option
 
-	logger := logrus.New()
-	logger.SetLevel(logrus.TraceLevel)
+	logger, err := zap.NewDevelopment()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = logger.Sync()
+	}()
 	serverOpts = append(serverOpts, server.WithLogger(logger))
 
 	terminalServer, err := server.New(serverOpts...)

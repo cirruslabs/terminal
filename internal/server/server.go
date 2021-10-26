@@ -8,13 +8,11 @@ import (
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/cirruslabs/terminal/internal/server/terminal"
 	"github.com/google/uuid"
-	"github.com/gorilla/handlers"
 	"github.com/improbable-eng/grpc-web/go/grpcweb"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
-	"io"
 	"net"
 	"net/http"
 	"strings"
@@ -24,7 +22,7 @@ import (
 var ErrNewTerminalRefused = errors.New("refusing to register new terminal")
 
 type TerminalServer struct {
-	logger *logrus.Logger
+	logger *zap.Logger
 
 	terminalsLock sync.RWMutex
 	terminals     map[string]*terminal.Terminal
@@ -51,8 +49,7 @@ func New(opts ...Option) (*TerminalServer, error) {
 
 	// Apply defaults
 	if ts.logger == nil {
-		ts.logger = logrus.New()
-		ts.logger.Out = io.Discard
+		ts.logger = zap.NewNop()
 	}
 	if ts.generateLocator == nil {
 		ts.generateLocator = func() string {
@@ -107,28 +104,14 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			fmt.Fprint(w, "Please use gRPC over HTTP/2 or gRPC-web over HTTP/1")
 		}
 	}
-	handlerWithLogging := handlers.CustomLoggingHandler(
-		ts.logger.Writer(),
-		http.HandlerFunc(grpcHandler),
-		func(w io.Writer, p handlers.LogFormatterParams) {
-			req := p.Request
-
-			uri := req.RequestURI
-			if uri == "" {
-				uri = p.URL.RequestURI()
-			}
-
-			_, _ = fmt.Fprintln(w, req.Method, uri, req.Proto, p.StatusCode, p.Size)
-		},
-	)
 
 	startServer := func(listener net.Listener) error {
 		server := http.Server{
-			Handler:   handlerWithLogging,
+			Handler:   http.HandlerFunc(grpcHandler),
 			TLSConfig: ts.tlsConfig,
 		}
 
-		ts.logger.Infof("Starting server on %s...", listener.Addr().String())
+		ts.logger.Sugar().Infof("starting server on %s...", listener.Addr().String())
 
 		if server.TLSConfig != nil {
 			return server.ServeTLS(listener, "", "")
@@ -145,7 +128,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 			defer cancel()
 
 			if serverErr := startServer(listener); serverErr != nil {
-				ts.logger.Warnf("server failed to start on %s: %v", listener.Addr().String(), err)
+				ts.logger.Sugar().With(zap.Error(err)).Warnf("server failed to start on %s", listener.Addr().String())
 			}
 		}()
 	}
