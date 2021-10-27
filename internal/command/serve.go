@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/blendle/zapdriver"
 	"github.com/cirruslabs/terminal/internal/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -15,11 +16,20 @@ import (
 )
 
 var debug bool
+var gcpProjectID string
 var serverAddresses []string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 
 func getLogger() (*zap.Logger, error) {
+	if gcpProjectID != "" {
+		if debug {
+			return zapdriver.NewDevelopment()
+		}
+
+		return zapdriver.NewProduction()
+	}
+
 	if debug {
 		return zap.NewDevelopment()
 	}
@@ -37,6 +47,8 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 			err = syncErr
 		}
 	}()
+
+	logger.With(zapdriver.TraceContext("trace", "spanId", false, "project")...).Info("kek!")
 
 	var tlsConfig *tls.Config
 
@@ -96,6 +108,9 @@ func newServeCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
+	cmd.PersistentFlags().StringVar(&gcpProjectID, "gcp-project-id", "",
+		"GCP project ID to emit structured logs in StackDriver format with tracing support "+
+			"(if X-Cloud-Trace-Context header is present)")
 
 	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")

@@ -3,6 +3,7 @@ module github.com/cirruslabs/terminal
 go 1.16
 
 require (
+	github.com/blendle/zapdriver v1.3.1
 	github.com/cirruslabs/cirrus-ci-agent v1.51.0
 	github.com/creack/pty v1.1.13
 	github.com/google/uuid v1.2.0

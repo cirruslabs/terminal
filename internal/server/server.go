@@ -35,6 +35,8 @@ type TerminalServer struct {
 	api.UnimplementedHostServiceServer
 
 	generateLocator LocatorGenerator
+
+	gcpProjectID string
 }
 
 func New(opts ...Option) (*TerminalServer, error) {

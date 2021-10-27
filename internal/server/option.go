@@ -32,3 +32,9 @@ func WithTLSConfig(tlsConfig *tls.Config) Option {
 		ts.tlsConfig = tlsConfig
 	}
 }
+
+func WithGCPProjectID(gcpProjectID string) Option {
+	return func(ts *TerminalServer) {
+		ts.gcpProjectID = gcpProjectID
+	}
+}
