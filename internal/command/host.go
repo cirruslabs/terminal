@@ -15,9 +15,7 @@ func runHost(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		if syncErr := logger.Sync(); syncErr != nil {
-			err = syncErr
-		}
+		_ = logger.Sync()
 	}()
 
 	if hostTrustedSecret == "" {

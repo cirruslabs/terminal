@@ -43,9 +43,7 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 		return err
 	}
 	defer func() {
-		if syncErr := logger.Sync(); syncErr != nil {
-			err = syncErr
-		}
+		_ = logger.Sync()
 	}()
 
 	logger.With(zapdriver.TraceContext("trace", "spanId", false, "project")...).Info("kek!")
