@@ -1,35 +1,59 @@
 package command
 
 import (
+	"cloud.google.com/go/compute/metadata"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"github.com/blendle/zapdriver"
 	"github.com/cirruslabs/terminal/internal/server"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 	"math/big"
 	"os"
-	"strings"
 )
 
-var logLevel string
+var debug bool
 var serverAddresses []string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 
-func runServe(cmd *cobra.Command, args []string) error {
-	logLevel, err := logrus.ParseLevel(logLevel)
+func getLogger() (*zap.Logger, error) {
+	if debug {
+		return zap.NewDevelopment()
+	}
+
+	return zap.NewProduction()
+}
+
+func runServe(cmd *cobra.Command, args []string) (err error) {
+	var opts []server.Option
+
+	// Initialize logger
+	logger, err := getLogger()
+
+	projectID, err := metadata.ProjectID()
+	if err == nil {
+		opts = append(opts, server.WithGCPProjectID(projectID))
+
+		if debug {
+			logger, err = zapdriver.NewDevelopment()
+		}
+
+		logger, err = zapdriver.NewProduction()
+	}
+
 	if err != nil {
 		return err
 	}
-	logger := logrus.New()
-	logger.SetLevel(logLevel)
-	logger.SetFormatter(&logrus.TextFormatter{
-		DisableTimestamp: true,
-	})
+	defer func() {
+		_ = logger.Sync()
+	}()
+
+	opts = append(opts, server.WithLogger(logger))
 
 	var tlsConfig *tls.Config
 
@@ -69,11 +93,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	terminalServer, err := server.New(
-		server.WithLogger(logger),
-		server.WithAddresses(serverAddresses),
-		server.WithTLSConfig(tlsConfig),
-	)
+	opts = append(opts, server.WithTLSConfig(tlsConfig), server.WithAddresses(serverAddresses))
+
+	terminalServer, err := server.New(opts...)
 	if err != nil {
 		return err
 	}
@@ -88,12 +110,7 @@ func newServeCmd() *cobra.Command {
 		RunE:  runServe,
 	}
 
-	var logLevelNames []string
-	for _, level := range logrus.AllLevels {
-		logLevelNames = append(logLevelNames, level.String())
-	}
-	cmd.PersistentFlags().StringVar(&logLevel, "log-level", "info",
-		fmt.Sprintf("logging level (possible levels: %s)", strings.Join(logLevelNames, ", ")))
+	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
 
 	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")

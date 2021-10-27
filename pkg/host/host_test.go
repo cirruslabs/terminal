@@ -7,6 +7,7 @@ package host
 import (
 	"github.com/cirruslabs/terminal/pkg/host/session"
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
 	"testing"
 	"time"
 )
@@ -17,10 +18,10 @@ func TestNumSessionsNormalAndFunc(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	session1 := session.New(nil, "first one")
+	session1 := session.New(zap.NewNop(), "first one")
 	terminalHost.registerSession(session1)
 
-	session2 := session.New(nil, "second one")
+	session2 := session.New(zap.NewNop(), "second one")
 	terminalHost.registerSession(session2)
 
 	assert.Equal(t, 2, terminalHost.NumSessions())

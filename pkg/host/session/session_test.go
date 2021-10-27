@@ -9,12 +9,13 @@ import (
 	"github.com/creack/pty"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 	"testing"
 	"time"
 )
 
 func TestLastActivitySimple(t *testing.T) {
-	session := New(nil, "")
+	session := New(zap.NewNop(), "")
 
 	require.Equal(t, time.Time{}, session.LastActivity())
 

@@ -8,7 +8,7 @@ import (
 	"errors"
 	"github.com/cirruslabs/terminal/internal/api"
 	"github.com/creack/pty"
-	"github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	"io"
 	"os"
 	"os/exec"
@@ -23,7 +23,7 @@ const (
 )
 
 type Session struct {
-	logger *logrus.Logger
+	logger *zap.SugaredLogger
 
 	token string
 
@@ -31,9 +31,9 @@ type Session struct {
 	lastActivity     time.Time
 }
 
-func New(logger *logrus.Logger, token string) *Session {
+func New(logger *zap.Logger, token string) *Session {
 	return &Session{
-		logger: logger,
+		logger: logger.Sugar(),
 		token:  token,
 	}
 }
