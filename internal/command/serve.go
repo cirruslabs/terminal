@@ -11,25 +11,17 @@ import (
 	"github.com/cirruslabs/terminal/internal/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/oauth2/google"
 	"math/big"
 	"os"
 )
 
 var debug bool
-var gcpProjectID string
 var serverAddresses []string
 var tlsEphemeral bool
 var tlsCertFile, tlsKeyFile string
 
 func getLogger() (*zap.Logger, error) {
-	if gcpProjectID != "" {
-		if debug {
-			return zapdriver.NewDevelopment()
-		}
-
-		return zapdriver.NewProduction()
-	}
-
 	if debug {
 		return zap.NewDevelopment()
 	}
@@ -38,7 +30,22 @@ func getLogger() (*zap.Logger, error) {
 }
 
 func runServe(cmd *cobra.Command, args []string) (err error) {
+	var opts []server.Option
+
+	// Initialize logger
 	logger, err := getLogger()
+
+	creds, err := google.FindDefaultCredentials(cmd.Context())
+	if err == nil {
+		opts = append(opts, server.WithGCPProjectID(creds.ProjectID))
+
+		if debug {
+			logger, err = zapdriver.NewDevelopment()
+		}
+
+		logger, err = zapdriver.NewProduction()
+	}
+
 	if err != nil {
 		return err
 	}
@@ -46,7 +53,7 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 		_ = logger.Sync()
 	}()
 
-	logger.With(zapdriver.TraceContext("trace", "spanId", false, "project")...).Info("kek!")
+	opts = append(opts, server.WithLogger(logger))
 
 	var tlsConfig *tls.Config
 
@@ -86,11 +93,9 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 		}
 	}
 
-	terminalServer, err := server.New(
-		server.WithLogger(logger),
-		server.WithAddresses(serverAddresses),
-		server.WithTLSConfig(tlsConfig),
-	)
+	opts = append(opts, server.WithTLSConfig(tlsConfig), server.WithAddresses(serverAddresses))
+
+	terminalServer, err := server.New(opts...)
 	if err != nil {
 		return err
 	}
@@ -106,9 +111,6 @@ func newServeCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
-	cmd.PersistentFlags().StringVar(&gcpProjectID, "gcp-project-id", "",
-		"GCP project ID to emit structured logs in StackDriver format with tracing support "+
-			"(if X-Cloud-Trace-Context header is present)")
 
 	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")
