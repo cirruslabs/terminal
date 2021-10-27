@@ -1,6 +1,7 @@
 package command
 
 import (
+	"cloud.google.com/go/compute/metadata"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -11,7 +12,6 @@ import (
 	"github.com/cirruslabs/terminal/internal/server"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"golang.org/x/oauth2/google"
 	"math/big"
 	"os"
 )
@@ -35,9 +35,9 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 	// Initialize logger
 	logger, err := getLogger()
 
-	creds, err := google.FindDefaultCredentials(cmd.Context())
+	projectID, err := metadata.ProjectID()
 	if err == nil {
-		opts = append(opts, server.WithGCPProjectID(creds.ProjectID))
+		opts = append(opts, server.WithGCPProjectID(projectID))
 
 		if debug {
 			logger, err = zapdriver.NewDevelopment()
