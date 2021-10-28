@@ -10,7 +10,6 @@ import (
 	"github.com/creack/pty"
 	"go.uber.org/zap"
 	"io"
-	"os"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -27,14 +26,17 @@ type Session struct {
 
 	token string
 
+	shellEnv []string
+
 	lastActivityLock sync.Mutex
 	lastActivity     time.Time
 }
 
-func New(logger *zap.Logger, token string) *Session {
+func New(logger *zap.Logger, token string, shellEnv []string) *Session {
 	return &Session{
-		logger: logger.Sugar(),
-		token:  token,
+		logger:   logger.Sugar(),
+		token:    token,
+		shellEnv: shellEnv,
 	}
 }
 
@@ -69,34 +71,17 @@ func (session *Session) Run(
 		return
 	}
 
-	// Create a PTY with a shell attached to it
-	shellPath := determineShellPath()
-	shellCmd := exec.Command(shellPath)
-
-	// Avoid "Error opening terminal: unknown." error
-	shellCmd.Env = []string{"TERM=xterm"}
-
-	shellPty, err := pty.StartWithSize(shellCmd, terminalDimensionsToPtyWinsize(dimensions))
+	shellPty, err := NewShellPTY(session.logger, dimensions, session.shellEnv)
 	if err != nil {
-		session.logger.Warnf("failed to create PTY: %v", err)
+		session.logger.Warnf("failed to create PTY with shell: %v", err)
 		return
 	}
-
-	session.logger.Debugf("started shell process with PID %d", shellCmd.Process.Pid)
 
 	// Ensure we cleanup both the PTY and the created shell process
 	defer func() {
 		if err := shellPty.Close(); err != nil {
-			session.logger.Warnf("failed to close PTY: %v", err)
+			session.logger.Warnf("failed to close PTY with shell: %v", err)
 		}
-
-		session.logger.Debugf("killing shell process with PID %d", shellCmd.Process.Pid)
-
-		if err := shellCmd.Process.Kill(); err != nil {
-			session.logger.Warnf("failed to kill shell process with PID %d: %v", shellCmd.Process.Pid, err)
-		}
-
-		_ = shellCmd.Wait()
 	}()
 
 	// Receive terminal input from the server and write it to the PTY
@@ -114,7 +99,7 @@ func (session *Session) Run(
 	<-dataChannelCtx.Done()
 }
 
-func (session *Session) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *os.File) {
+func (session *Session) ioToPty(dataChannel api.HostService_DataChannelClient, shellPty *ShellPTY) {
 	for {
 		dataFromServer, err := dataChannel.Recv()
 		if err != nil {
@@ -134,7 +119,7 @@ func (session *Session) ioToPty(dataChannel api.HostService_DataChannelClient, s
 				return
 			}
 		case *api.HostDataResponse_ChangeDimensions:
-			if err := pty.Setsize(shellPty, terminalDimensionsToPtyWinsize(op.ChangeDimensions)); err != nil {
+			if err := shellPty.Resize(op.ChangeDimensions); err != nil {
 				session.logger.Warnf("failed to resize PTY: %v", err)
 				return
 			}

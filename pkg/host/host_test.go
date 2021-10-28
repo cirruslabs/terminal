@@ -18,10 +18,10 @@ func TestNumSessionsNormalAndFunc(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	session1 := session.New(zap.NewNop(), "first one")
+	session1 := session.New(zap.NewNop(), "first one", nil)
 	terminalHost.registerSession(session1)
 
-	session2 := session.New(zap.NewNop(), "second one")
+	session2 := session.New(zap.NewNop(), "second one", nil)
 	terminalHost.registerSession(session2)
 
 	assert.Equal(t, 2, terminalHost.NumSessions())

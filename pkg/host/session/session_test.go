@@ -15,7 +15,7 @@ import (
 )
 
 func TestLastActivitySimple(t *testing.T) {
-	session := New(zap.NewNop(), "")
+	session := New(zap.NewNop(), "", nil)
 
 	require.Equal(t, time.Time{}, session.LastActivity())
 

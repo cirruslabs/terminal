@@ -31,3 +31,9 @@ func WithLocatorCallback(locatorCallback LocatorCallback) Option {
 		th.locatorCallback = locatorCallback
 	}
 }
+
+func WithShellEnv(shellEnv []string) Option {
+	return func(th *TerminalHost) {
+		th.shellEnv = shellEnv
+	}
+}

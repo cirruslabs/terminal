@@ -118,7 +118,7 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 			return fmt.Errorf("%w: should've received a DataChannelRequest message", ErrProtocol)
 		}
 
-		session := session.New(th.logger, dataChannelRequest.Token)
+		session := session.New(th.logger, dataChannelRequest.Token, th.shellEnv)
 		sessionWG.Add(1)
 
 		go func() {
