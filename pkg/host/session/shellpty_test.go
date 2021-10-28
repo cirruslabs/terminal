@@ -27,9 +27,7 @@ func TestEnvPassthrough(t *testing.T) {
 
 	buf := bytes.NewBuffer([]byte{})
 
-	if _, err := io.Copy(buf, shellPty); err != nil {
-		t.Fatal(err)
-	}
+	_, _ = io.Copy(buf, shellPty)
 
 	if err := shellPty.Close(); err != nil {
 		t.Fatal(err)
