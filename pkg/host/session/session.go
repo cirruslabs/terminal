@@ -26,14 +26,17 @@ type Session struct {
 
 	token string
 
+	shellEnv []string
+
 	lastActivityLock sync.Mutex
 	lastActivity     time.Time
 }
 
-func New(logger *zap.Logger, token string) *Session {
+func New(logger *zap.Logger, token string, shellEnv []string) *Session {
 	return &Session{
-		logger: logger.Sugar(),
-		token:  token,
+		logger:   logger.Sugar(),
+		token:    token,
+		shellEnv: shellEnv,
 	}
 }
 
@@ -68,7 +71,7 @@ func (session *Session) Run(
 		return
 	}
 
-	shellPty, err := NewShellPTY(session.logger, dimensions)
+	shellPty, err := NewShellPTY(session.logger, dimensions, session.shellEnv)
 	if err != nil {
 		session.logger.Warnf("failed to create PTY with shell: %v", err)
 		return

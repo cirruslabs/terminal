@@ -14,13 +14,17 @@ type ShellPTY struct {
 	pty      *os.File
 }
 
-func NewShellPTY(logger *zap.SugaredLogger, dimensions *api.TerminalDimensions) (*ShellPTY, error) {
+func NewShellPTY(logger *zap.SugaredLogger, dimensions *api.TerminalDimensions, env []string) (*ShellPTY, error) {
 	// Create a PTY with a shell attached to it
 	shellPath := determineShellPath()
 	shellCmd := exec.Command(shellPath)
 
 	// Inherit this process environment variables
-	shellCmd.Env = os.Environ()
+	if len(env) == 0 {
+		shellCmd.Env = os.Environ()
+	} else {
+		shellCmd.Env = env
+	}
 
 	// Set TERM to avoid "Error opening terminal: unknown." error
 	shellCmd.Env = append(shellCmd.Env, "TERM=xterm")

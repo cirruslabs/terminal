@@ -10,6 +10,8 @@ import (
 type TerminalHost struct {
 	logger *zap.Logger
 
+	shellEnv []string
+
 	serverAddress string
 
 	trustedSecret string
