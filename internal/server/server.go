@@ -13,13 +13,17 @@ import (
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/keepalive"
 	"net"
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 )
 
 var ErrNewTerminalRefused = errors.New("refusing to register new terminal")
+
+const keepaliveInterval = 5 * time.Minute
 
 type TerminalServer struct {
 	logger *zap.Logger
@@ -80,7 +84,10 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	grpcServer := grpc.NewServer()
+	keepaliveOption := grpc.KeepaliveParams(keepalive.ServerParameters{
+		Time: keepaliveInterval,
+	})
+	grpcServer := grpc.NewServer(keepaliveOption)
 	defer grpcServer.Stop()
 	api.RegisterHostServiceServer(grpcServer, ts)
 	api.RegisterGuestServiceServer(grpcServer, ts)
