@@ -17,6 +17,10 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 	return ErrUnsupported
 }
 
+func (th *TerminalHost) LastConnection() time.Time {
+	return time.Time{}
+}
+
 func (th *TerminalHost) LastRegistration() time.Time {
 	return time.Time{}
 }
