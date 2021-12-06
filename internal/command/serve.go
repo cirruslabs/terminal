@@ -46,9 +46,6 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 		logger, err = zapdriver.NewProduction()
 	}
 
-	if err != nil {
-		return err
-	}
 	defer func() {
 		_ = logger.Sync()
 	}()
