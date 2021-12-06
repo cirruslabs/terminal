@@ -94,6 +94,10 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 		}
 	}
 
+	th.lastConnectionMtx.Lock()
+	th.lastConnection = time.Now()
+	th.lastConnectionMtx.Unlock()
+
 	var sessionWG sync.WaitGroup
 	defer sessionWG.Wait()
 
@@ -128,6 +132,13 @@ func (th *TerminalHost) Run(ctx context.Context) error {
 			sessionWG.Done()
 		}()
 	}
+}
+
+func (th *TerminalHost) LastConnection() time.Time {
+	th.sessionsLock.Lock()
+	defer th.sessionsLock.Unlock()
+
+	return th.lastConnection
 }
 
 func (th *TerminalHost) LastRegistration() time.Time {
