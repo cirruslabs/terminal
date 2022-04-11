@@ -98,6 +98,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		grpcweb.WithWebsocketOriginFunc(func(request *http.Request) bool {
 			return true
 		}),
+		grpcweb.WithWebsocketPingInterval(keepaliveInterval),
 	)
 
 	grpcHandler := func(w http.ResponseWriter, r *http.Request) {
