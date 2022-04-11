@@ -23,7 +23,7 @@ import (
 
 var ErrNewTerminalRefused = errors.New("refusing to register new terminal")
 
-const keepaliveInterval = 5 * time.Minute
+const keepaliveInterval = 1 * time.Minute
 
 type TerminalServer struct {
 	logger *zap.Logger
