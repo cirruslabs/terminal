@@ -23,7 +23,7 @@ import (
 
 var ErrNewTerminalRefused = errors.New("refusing to register new terminal")
 
-const keepaliveInterval = 5 * time.Minute
+const keepaliveInterval = 1 * time.Minute
 
 type TerminalServer struct {
 	logger *zap.Logger
@@ -98,6 +98,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 		grpcweb.WithWebsocketOriginFunc(func(request *http.Request) bool {
 			return true
 		}),
+		grpcweb.WithWebsocketPingInterval(keepaliveInterval),
 	)
 
 	grpcHandler := func(w http.ResponseWriter, r *http.Request) {
