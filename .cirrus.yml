@@ -4,7 +4,7 @@ container:
 task:
   name: Test
   test_script:
-    - go test ./...
+    - docker version
 
 task:
   name: JavaScript Protocol Buffers and gRPC code-generation
