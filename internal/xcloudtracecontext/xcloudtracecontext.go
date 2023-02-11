@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// nolint:lll
+//nolint:lll
 // https://github.com/googleapis/google-cloud-go/blob/bc93c1f0180801c5c69ef0629721a6f413c0bc9c/logging/logging.go#L774-L801
 
 package xcloudtracecontext

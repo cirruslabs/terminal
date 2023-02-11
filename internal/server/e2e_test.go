@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 	"strings"
 	"testing"
 )
@@ -79,7 +80,7 @@ func TestTerminalDimensionsCanBeChanged(t *testing.T) {
 	}
 
 	// Emulate guest: open up a terminal channel, just like a web UI would do
-	clientConn, err := grpc.Dial(serverAddress, grpc.WithInsecure())
+	clientConn, err := grpc.Dial(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		t.Fatal(err)
 	}

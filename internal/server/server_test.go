@@ -1,4 +1,4 @@
-// nolint:testpackage // we intentionally don't use a separate test package to call internal TerminalServer methods
+//nolint:testpackage // we intentionally don't use a separate test package to call internal TerminalServer methods
 package server
 
 import (

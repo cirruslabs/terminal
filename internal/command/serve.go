@@ -33,17 +33,17 @@ func runServe(cmd *cobra.Command, args []string) (err error) {
 	var opts []server.Option
 
 	// Initialize logger
-	logger, err := getLogger()
+	logger, _ := getLogger()
 
 	projectID, err := metadata.ProjectID()
 	if err == nil {
 		opts = append(opts, server.WithGCPProjectID(projectID))
 
 		if debug {
-			logger, err = zapdriver.NewDevelopment()
+			logger, _ = zapdriver.NewDevelopment()
 		}
 
-		logger, err = zapdriver.NewProduction()
+		logger, _ = zapdriver.NewProduction()
 	}
 
 	defer func() {
@@ -109,7 +109,7 @@ func newServeCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
 
-	// nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
+	//nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
