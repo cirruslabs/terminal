@@ -10,57 +10,55 @@ linters-settings:
 
 linters:
   enable:
-  - asciicheck
-  - bodyclose
-  - deadcode
-  - depguard
-  - dogsled
-  - dupl
-  - errcheck
-  - exhaustive
-  - exportloopref
-  - gochecknoinits
-  - gocognit
-  - goconst
-  - gocritic
-  - gocyclo
-  - godot
-  - godox
-  - goerr113
-  - gofmt
-  - goheader
-  - golint
-  - gomnd
-  - gomodguard
-  - goprintffuncname
-  - gosec
-  - gosimple
-  - govet
-  - ifshort
-  - ineffassign
-  - interfacer
-  - lll
-  - makezero
-  - misspell
-  - nakedret
-  - nestif
-  - noctx
-  - nolintlint
-  - predeclared
-  - rowserrcheck
-  - scopelint
-  - sqlclosecheck
-  - staticcheck
-  - structcheck
-  - stylecheck
-  - testpackage
-  - tparallel
-  - typecheck
-  - unconvert
-  - unparam
-  - unused
-  - varcheck
-  - whitespace
+    - asciicheck
+    - bodyclose
+    - deadcode
+    - depguard
+    - dupl
+    - errcheck
+    - exhaustive
+    - exportloopref
+    - gochecknoinits
+    - gocognit
+    - goconst
+    - gocritic
+    - gocyclo
+    - godot
+    - godox
+    - goerr113
+    - gofmt
+    - goheader
+    - golint
+    - gomodguard
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ifshort
+    - ineffassign
+    - interfacer
+    - lll
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - noctx
+    - nolintlint
+    - predeclared
+    - rowserrcheck
+    - scopelint
+    - sqlclosecheck
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - testpackage
+    - tparallel
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
 
   disable:
     # Messages like "struct of size 104 bytes could be of size 96 bytes" from a package
@@ -117,6 +115,9 @@ linters:
     # No way to disable the "exported" check for the whole project[1]
     # [1]: https://github.com/mgechev/revive/issues/244#issuecomment-560512162
     - revive
+
+    # Unfortunately too much false-positives, e.g. for a 0700 umask or number 10 when using strconv.FormatInt()
+    - gomnd
 
 issues:
   # Don't hide multiple issues that belong to one class since GitHub annotations can handle them all nicely.
