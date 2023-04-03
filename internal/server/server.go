@@ -117,9 +117,9 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 
 	startServer := func(listener net.Listener) error {
 		server := http.Server{
-			Handler:     http.HandlerFunc(grpcHandler),
-			ReadTimeout: 5 * time.Second,
-			TLSConfig:   ts.tlsConfig,
+			Handler:           http.HandlerFunc(grpcHandler),
+			ReadHeaderTimeout: 5 * time.Second,
+			TLSConfig:         ts.tlsConfig,
 		}
 
 		ts.logger.Sugar().Infof("starting server on %s...", listener.Addr().String())
