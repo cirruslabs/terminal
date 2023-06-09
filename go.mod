@@ -5,7 +5,7 @@ go 1.20
 require (
 	cloud.google.com/go/compute/metadata v0.2.3
 	github.com/blendle/zapdriver v1.3.1
-	github.com/cirruslabs/cirrus-ci-agent v1.101.0
+	github.com/cirruslabs/cirrus-ci-agent v1.112.0
 	github.com/creack/pty v1.1.18
 	github.com/google/uuid v1.3.0
 	github.com/improbable-eng/grpc-web v0.15.0
@@ -20,7 +20,6 @@ require (
 require (
 	cloud.google.com/go/compute v1.18.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.2.0 // indirect
-	github.com/certifi/gocertifi v0.0.0-20210507211836-431795d63e8d // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/desertbit/timer v0.0.0-20180107155436-c41aec40b27f // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
