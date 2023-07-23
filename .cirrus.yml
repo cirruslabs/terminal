@@ -27,3 +27,20 @@ task:
     - find $OUTDIR
   js_proto_codegen_artifacts:
     path: $OUTDIR/*
+
+docker_builder:
+  name: Release Docker Image
+  only_if: $CIRRUS_TAG != ''
+  env:
+    GITHUB_TOKEN: ENCRYPTED[!82ed873afdf627284305afef4958c85a8f73127b09978a9786ac521559630ea6c9a5ab6e7f8315abf9ead09b6eff6eae!]
+  login_script:
+    - echo $GITHUB_TOKEN | docker login ghcr.io -u fkorotkov --password-stdin
+  setup_script:
+    - docker buildx create --name multibuilder
+    - docker buildx use multibuilder
+    - docker buildx inspect --bootstrap
+  deploy_script: |
+    docker buildx build --push --platform linux/amd64,linux/arm64 \
+      --tag ghcr.io/cirruslabs/terminal:$CIRRUS_TAG \
+      --tag ghcr.io/cirruslabs/terminal:latest \
+      .
