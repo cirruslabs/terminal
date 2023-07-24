@@ -1,0 +1,10 @@
+version: v1
+plugins:
+  - name: js
+    out: buf-codegen
+    opt:
+      - import_style=commonjs,binary
+  - name: ts
+    out: buf-codegen
+    opt:
+      - service=grpc-web
