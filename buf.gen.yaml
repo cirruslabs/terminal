@@ -8,3 +8,9 @@ plugins:
     out: buf-codegen
     opt:
       - service=grpc-web
+  - plugin: go
+    out: internal/api
+    opt: paths=source_relative
+  - plugin: go-grpc
+    out: internal/api
+    opt: paths=source_relative
