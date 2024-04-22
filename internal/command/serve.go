@@ -109,7 +109,6 @@ func newServeCmd() *cobra.Command {
 
 	cmd.PersistentFlags().BoolVar(&debug, "debug", false, "enable debugging")
 
-	//nolint:ifshort // false-positive similar to https://github.com/esimonov/ifshort/issues/12
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
