@@ -9,7 +9,7 @@ import (
 var hostServerAddress string
 var hostTrustedSecret string
 
-func runHost(cmd *cobra.Command, args []string) (err error) {
+func runHost(cmd *cobra.Command, args []string) error {
 	logger, err := getLogger()
 	if err != nil {
 		return err

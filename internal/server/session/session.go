@@ -7,6 +7,7 @@ import (
 )
 
 type Session struct {
+	//nolint:containedctx // seems perfectly valid for our use-case
 	subCtx context.Context
 	cancel context.CancelFunc
 

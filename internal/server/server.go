@@ -79,7 +79,7 @@ func New(opts ...Option) (*TerminalServer, error) {
 	return ts, nil
 }
 
-func (ts *TerminalServer) Run(ctx context.Context) (err error) {
+func (ts *TerminalServer) Run(ctx context.Context) error {
 	// Create a sub-context to let the first failing Goroutine to start the cancellation process
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -102,7 +102,7 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	)
 
 	grpcHandler := func(w http.ResponseWriter, r *http.Request) {
-		contentType := r.Header.Get("content-type")
+		contentType := r.Header.Get("Content-Type")
 		switch {
 		case strings.ToLower(r.Header.Get("Sec-Websocket-Protocol")) == "grpc-websockets":
 			grpcWebServer.ServeHTTP(w, r)
@@ -134,11 +134,10 @@ func (ts *TerminalServer) Run(ctx context.Context) (err error) {
 	}
 
 	for _, listener := range ts.listeners {
-		listener := listener
 		go func() {
 			defer cancel()
 
-			if serverErr := startServer(listener); serverErr != nil {
+			if err := startServer(listener); err != nil {
 				ts.logger.Sugar().With(zap.Error(err)).Warnf("server failed to start on %s", listener.Addr().String())
 			}
 		}()

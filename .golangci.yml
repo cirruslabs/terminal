@@ -1,60 +1,10 @@
+version: 2
+
 run:
   timeout: 5m
 
-linters-settings:
-  # Even in Rust you can get away with partial matching,
-  # so make sure that the linter respects the programmer's
-  # intent expressed in the form of "default" case.
-  exhaustive:
-    default-signifies-exhaustive: true
-
-  staticcheck:
-    checks:
-      - "all"
-      - "-SA1019" # deprecated warnings which we have a lot from generated proto
-  gosec:
-    excludes:
-      - G115
-
 linters:
-  enable:
-    - asciicheck
-    - bodyclose
-    - dupl
-    - errcheck
-    - exhaustive
-    - gocognit
-    - gocritic
-    - gocyclo
-    - godot
-    - godox
-    - gofmt
-    - goheader
-    - gomodguard
-    - goprintffuncname
-    - gosec
-    - gosimple
-    - govet
-    - ineffassign
-    - lll
-    - makezero
-    - misspell
-    - nakedret
-    - nestif
-    - noctx
-    - nolintlint
-    - predeclared
-    - rowserrcheck
-    - sqlclosecheck
-    - staticcheck
-    - stylecheck
-    - testpackage
-    - tparallel
-    - typecheck
-    - unconvert
-    - unparam
-    - unused
-    - whitespace
+  default: all
 
   disable:
     # We don't have high-performance requirements at this moment, so sacrificing
@@ -71,8 +21,6 @@ linters:
 
     # Style linters that are total nuts.
     - wsl
-    - gofumpt
-    - goimports
     - funlen
 
     # Enough parallelism for now.
@@ -105,6 +53,37 @@ linters:
 
     # Work around https://github.com/golangci/golangci-lint/pull/4698
     - gochecknoinits
+
+    # We don't care about some of the errors
+    - errcheck
+
+    # It's OK to have "magic" numbers in things like time.Sleep()
+    - mnd
+
+    # fmt.Sprintf() looks nicer than string concatenation
+    - perfsprint
+
+    # It's OK to have short variable names
+    - varnamelen
+
+    # Even in Rust you can get away with partial matching,
+    # so make sure that the linter respects the programmer's
+    # intent expressed in the form of "default" case.
+    - exhaustruct
+
+    # We already perform nil checks, so no need to complicate things
+    # further by checking that the message fields are non-nil too
+    - protogetter
+
+    # Compatibility with the old codebase
+    - funcorder
+
+  exclusions:
+    rules:
+      # It's OK to pass variables to exec.Cmd
+      - linters:
+          - gosec
+        text: "G204:"
 
 issues:
   # Don't hide multiple issues that belong to one class since GitHub annotations can handle them all nicely.

@@ -3,12 +3,13 @@ package session_test
 import (
 	"context"
 	"github.com/cirruslabs/terminal/internal/server/session"
+	"github.com/stretchr/testify/require"
 	"testing"
 )
 
 func TestSessionCloseResultsInContextCancellation(t *testing.T) {
 	session := session.New(context.Background(), nil)
-	session.Close()
+	require.NoError(t, session.Close())
 
 	select {
 	case <-session.Context().Done():

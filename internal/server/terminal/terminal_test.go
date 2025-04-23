@@ -59,8 +59,6 @@ func TestSecretValidation(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		testCase := testCase
-
 		t.Run(testCase.Name, func(t *testing.T) {
 			actuallyValid := testCase.Terminal.IsSecretValid(testCase.SecretToValidate)
 
@@ -76,7 +74,7 @@ func TestSessionsAreCleanedUpAfterTerminalClosure(t *testing.T) {
 	var registeredSessions []*session.Session
 	const sessionsToRegister = 10
 
-	for i := 0; i < sessionsToRegister; i++ {
+	for range sessionsToRegister {
 		newSession := session.New(context.Background(), nil)
 
 		require.NoError(t, terminal.RegisterSession(newSession))

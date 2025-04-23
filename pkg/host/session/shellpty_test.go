@@ -10,14 +10,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/zap"
 	"io"
-	"os"
 	"testing"
 )
 
 func TestEnvPassthrough(t *testing.T) {
-	if err := os.Setenv("TEST_ENV_PASSTHROUGH_CANARY", "some value"); err != nil {
-		t.Fatal(err)
-	}
+	t.Setenv("TEST_ENV_PASSTHROUGH_CANARY", "some value")
 
 	shellPty, err := session.NewShellPTY(zap.NewNop().Sugar(), nil, nil)
 	if err != nil {
