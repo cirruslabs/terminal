@@ -46,11 +46,11 @@ func NewShellPTY(logger *zap.SugaredLogger, dimensions *api.TerminalDimensions, 
 	}, nil
 }
 
-func (sp *ShellPTY) Write(b []byte) (n int, err error) {
+func (sp *ShellPTY) Write(b []byte) (int, error) {
 	return sp.pty.Write(b)
 }
 
-func (sp *ShellPTY) Read(b []byte) (n int, err error) {
+func (sp *ShellPTY) Read(b []byte) (int, error) {
 	return sp.pty.Read(b)
 }
 

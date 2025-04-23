@@ -28,6 +28,6 @@ func TestNumSessionsNormalAndFunc(t *testing.T) {
 	assert.Equal(t, 2, terminalHost.NumSessionsFunc(func(session *session.Session) bool {
 		uninitializedTime := time.Time{}
 
-		return session.LastActivity() == uninitializedTime
+		return session.LastActivity().Equal(uninitializedTime)
 	}))
 }

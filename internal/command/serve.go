@@ -29,7 +29,7 @@ func getLogger() (*zap.Logger, error) {
 	return zap.NewProduction()
 }
 
-func runServe(cmd *cobra.Command, args []string) (err error) {
+func runServe(cmd *cobra.Command, args []string) error {
 	var opts []server.Option
 
 	// Initialize logger

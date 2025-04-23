@@ -10,6 +10,7 @@ import (
 	"github.com/creack/pty"
 	"go.uber.org/zap"
 	"io"
+	"math"
 	"os/exec"
 	"runtime"
 	"sync"
@@ -203,7 +204,15 @@ func terminalDimensionsToPtyWinsize(terminalDimensions *api.TerminalDimensions) 
 	}
 
 	return &pty.Winsize{
-		Cols: uint16(terminalDimensions.WidthColumns),
-		Rows: uint16(terminalDimensions.HeightRows),
+		Cols: safeUint32ToUint16(terminalDimensions.WidthColumns, defaultWidthColumns),
+		Rows: safeUint32ToUint16(terminalDimensions.HeightRows, defaultHeightRows),
 	}
+}
+
+func safeUint32ToUint16(val uint32, fallback uint16) uint16 {
+	if val > math.MaxUint16 {
+		return fallback
+	}
+
+	return uint16(val)
 }

@@ -27,7 +27,7 @@ var reCloudTraceContext = regexp.MustCompile(
 		// Matches on ";0=TRACE_TRUE"
 		`(?:;o=(\d))?`)
 
-func DeconstructXCloudTraceContext(s string) (traceID, spanID string, traceSampled bool) {
+func DeconstructXCloudTraceContext(s string) (string, string, bool) {
 	// As per the format described at https://cloud.google.com/trace/docs/setup#force-trace
 	//    "X-Cloud-Trace-Context: TRACE_ID/SPAN_ID;o=TRACE_TRUE"
 	// for example:
@@ -39,11 +39,11 @@ func DeconstructXCloudTraceContext(s string) (traceID, spanID string, traceSampl
 	//   * traceSampled (optional): 	true
 	matches := reCloudTraceContext.FindStringSubmatch(s)
 
-	traceID, spanID, traceSampled = matches[1], matches[2], matches[3] == "1"
+	traceID, spanID, traceSampled := matches[1], matches[2], matches[3] == "1"
 
 	if spanID == "0" {
 		spanID = ""
 	}
 
-	return
+	return traceID, spanID, traceSampled
 }
